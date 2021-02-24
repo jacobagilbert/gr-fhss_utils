@@ -119,6 +119,7 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_frequency,
     // this amount of samples available at the start of
     // our input buffer.
     set_history(d_burst_pre_len * d_fft_size + 1);
+
     // This makes sure we have at least d_lookahead FFTs in the
     // buffer, not including history. There will always be enough
     // data to convert a pre_burst to a burst, and still tag it
@@ -213,6 +214,8 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_frequency,
     if (d_debug) {
         d_burst_debug_file = fopen("/tmp/fft_burst_tagger-bursts.log", "w");
     }
+
+    message_port_register_out(PMTCONSTSTR__debug());
 }
 
 /*
@@ -257,6 +260,7 @@ bool fft_burst_tagger_impl::stop()
     printf("update cb time: %f\n", d_update_cb_timer.elapsed());
     printf("other timer: %f\n", d_other.elapsed());
 #endif
+    printf("saw %d ffts\n", d_abs_fft_index);
     printf("extra = %zu\n", extra);
 
     return true;
@@ -307,6 +311,18 @@ void fft_burst_tagger_impl::update_circular_buffer(void)
            sizeof(float) * d_fft_size);
     if (d_rel_mag_hist > 0)
         d_rel_hist_index = (d_rel_hist_index + 1) % d_rel_mag_hist;
+
+        //DEBUG
+        if ((d_abs_fft_index & 0xfff) == 0) {
+            std::cout << "[";
+            for (size_t i = 0; i < d_fft_size; i++) {
+                //std::cout << i << "\t";
+                d_bin_averages[i].dump();
+                std::cout << "," << std::endl;
+            }
+            std::cout << "]" << std::endl;
+        }
+
 }
 
 void fft_burst_tagger_impl::update_active_bursts(void)
@@ -537,6 +553,7 @@ void fft_burst_tagger_impl::create_new_bursts(const gr_complex* input)
 {
     // Convert potential bursts into burst once they have existed for a sufficient amount
     // of time.
+    
     auto b = d_pre_bursts.begin();
     while (b != d_pre_bursts.end()) {
 
@@ -995,6 +1012,15 @@ int fft_burst_tagger_impl::work(int noutput_items,
         d_update_cb_timer.start();
         update_circular_buffer();
         d_update_cb_timer.end();
+
+        std::vector<gr_complex> dbg(d_fft_size);
+        for (auto ii=0; ii<d_fft_size; ii++) {
+            dbg[ii] = 10*log10(d_magnitude_shifted_f[ii]) + 1j*10*log10(1e-10+(d_threshold*d_fft_size)*d_baseline_sum_f[0+ii]/d_history_size);
+        }
+        // debug port publishes PSD
+        message_port_pub(PMTCONSTSTR__debug(),
+                         pmt::cons(pmt::PMT_NIL, pmt::init_c32vector(d_fft_size, &dbg[0])));
+        usleep(10000);
     }
 
     d_other.start();

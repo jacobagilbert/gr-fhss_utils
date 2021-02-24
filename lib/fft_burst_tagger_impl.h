@@ -97,6 +97,13 @@ public:
             curIndex = 0;
         return sum;
     }
+    void dump()
+    {
+        std::cout << "[";
+        for (auto ii=0; ii < N-1; ii++)
+            std::cout << hist[ii] << ", ";
+        std::cout << hist[N-1] << "]";
+    }
 
 private:
     std::vector<float> hist;

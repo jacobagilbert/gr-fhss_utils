@@ -60,6 +60,9 @@ inputs:
 outputs:
 -   domain: stream
     dtype: complex
+-   domain: message
+    id: debug
+    optional: true
 
 templates:
     imports: import fhss_utils
