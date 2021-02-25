@@ -337,7 +337,7 @@ void fft_burst_tagger_impl::_reset()
     d_pre_bursts.clear();
     d_new_bursts.clear();
     for (burst b : d_bursts) {
-        b.stop = d_abs_fft_index;
+        b.stop = d_abs_fft_index - d_burst_pre_len;
         if (b.valid)
             d_gone_bursts.push_back(b);
     }
@@ -428,7 +428,7 @@ void fft_burst_tagger_impl::create_new_potential_bursts(void)
 
 
                 // The burst might have started one FFT earlier
-                b.start = d_abs_fft_index - d_burst_pre_len - d_rel_mag_hist;
+                b.start = d_abs_fft_index - d_burst_pre_len * 2 - d_rel_mag_hist;
                 b.id = d_pre_burst_id++;
                 b.thresh_count = 1 + d_rel_mag_hist;
                 // printf("creating new pre_burst (%lu) with offset %lu, at bin %u\n",

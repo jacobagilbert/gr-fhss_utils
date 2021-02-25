@@ -33,7 +33,6 @@ private:
     std::vector<gr::fft::fft_complex*> d_ffts;
     std::vector<float*> d_windows;
     std::vector<float> d_fft_mag2_gains;
-    float* d_mags2;
     float* d_magnitude_shifted_f;
 
     // correction tools

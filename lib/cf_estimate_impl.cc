@@ -19,6 +19,10 @@
 namespace gr {
 namespace fhss_utils {
 
+const int MAX_FFT_POWER = 8;
+const int MIN_FFT_POWER = 5;
+const int MIN_NFFTS = 4;
+
 cf_estimate::sptr cf_estimate::make(int method, std::vector<float> channel_freqs)
 {
     return gnuradio::get_initial_sptr(new cf_estimate_impl(method, channel_freqs));
@@ -32,14 +36,14 @@ cf_estimate_impl::cf_estimate_impl(int method, std::vector<float> channel_freqs)
                 gr::io_signature::make(0, 0, 0),
                 gr::io_signature::make(0, 0, 0)),
       d_method(method),
-      d_channel_freqs(channel_freqs),
-      d_mags2(nullptr)
+      d_channel_freqs(channel_freqs)
 {
     message_port_register_in(PMTCONSTSTR__in());
     message_port_register_out(PMTCONSTSTR__out());
     message_port_register_out(PMTCONSTSTR__debug());
     set_msg_handler(PMTCONSTSTR__in(), [this](pmt::pmt_t msg) { this->cf_estimate_impl::pdu_handler(msg); });
-    fft_setup(15);
+
+    fft_setup(MAX_FFT_POWER);
 
     if (d_channel_freqs.size() == 0 && d_method == COERCE) {
         GR_LOG_WARN(d_logger,
@@ -76,7 +80,7 @@ void cf_estimate_impl::fft_setup(int power)
          * generate the window
          */
 
-        bool USE_GAUSSIAN_WINDOW(false);
+        bool USE_GAUSSIAN_WINDOW(true);
         d_windows.push_back(
             (float*)volk_malloc(sizeof(float) * fftsize, volk_get_alignment()));
         float gain_rms = 0;
@@ -85,7 +89,7 @@ void cf_estimate_impl::fft_setup(int power)
         // documented (its very large); that said the BLACKMAN_WIN does not perform well
         // for heavily biased signals. consider using a TUKEY filter...
         if (USE_GAUSSIAN_WINDOW) {
-            float two_sigma_squared = fftsize * 7.0 / 8.0; // former d_guass_sigma = 7/8
+            float two_sigma_squared = fftsize * 1.0 / 32.0; // former d_guass_sigma = 7/8
             two_sigma_squared *= 2 * two_sigma_squared;
             for (int j = 0; j < fftsize; j++) {
                 float x = (-fftsize + 1) / 2.0f + j;
@@ -103,13 +107,6 @@ void cf_estimate_impl::fft_setup(int power)
 
         gain_rms = sqrt(gain_rms / fftsize);
         d_fft_mag2_gains.push_back(fftsize * fftsize * gain_rms * gain_rms);
-
-        /* initialize d_mags2 */
-        if (d_mags2 != nullptr) {
-            volk_free(d_mags2);
-        }
-        // VOLK 2.1 UPDATE ME
-        d_mags2 = (float*)volk_malloc(sizeof(float) * fftsize, volk_get_alignment());
     }
 }
 
@@ -123,10 +120,6 @@ void cf_estimate_impl::fft_cleanup()
         volk_free(win);
     }
     d_windows.clear();
-    if (d_mags2 != nullptr) {
-        volk_free(d_mags2);
-    }
-    d_mags2 = nullptr;
 }
 
 
@@ -180,44 +173,67 @@ void cf_estimate_impl::pdu_handler(pmt::pmt_t pdu)
     size_t burst_size;
     const gr_complex* data = pmt::c32vector_elements(pdu_data, burst_size);
 
+    if (burst_size < pow(2, MIN_FFT_POWER) * MIN_NFFTS) {
+        std::cout << "\t******\tWHAT IS THIS? A BURST FOR ANTS??\n";
+    }
+
     //////////////////////////////////
     // frequency analysis & PSD estimate
     //////////////////////////////////
     // fftsize is the data burst_size rounded down to a power of 2
-    bool round_up = false;
-    int fftpower = 0;
-    size_t copy_size = 0;
-    if (round_up) {
-        fftpower = std::ceil(log2(burst_size));
-        copy_size = burst_size;
-    } else {
-        fftpower = std::floor(log2(burst_size));
-        copy_size = pow(2, fftpower);
+    int fftpower = std::floor(log2(burst_size * 1.0 / MIN_NFFTS));
+
+    if (fftpower > MAX_FFT_POWER) {
+        std::cout << "coercing FFT power from " << fftpower << " to " << MAX_FFT_POWER
+                  << std::endl;
+        fftpower = MAX_FFT_POWER;
     }
+
     size_t fftsize = pow(2, fftpower);
+    size_t nffts = std::floor(1.0 * burst_size / fftsize);
+    size_t copy_size = nffts * fftsize;
+
+    std::cout << nffts << " ffts of size " << fftsize << " from burst of length "
+              << burst_size << std::endl;
 
     // the offset ensures the center part of the burst is used
-    uint32_t offset = std::max((size_t)0, (burst_size - fftsize) / 2);
+    uint32_t offset = std::max((size_t)0, (burst_size - copy_size) / 2);
 
-    fft_setup(fftpower);
+    // this is already done?? - fft_setup(fftpower);
 
-    // copy in data to the right buffer, pad with zeros
-    gr_complex* fft_in = d_ffts[fftpower]->get_inbuf();
-    memset(fft_in, 0, sizeof(gr_complex) * fftsize);
-    memcpy(fft_in, data + offset, sizeof(gr_complex) * copy_size);
+    std::vector<float> fftm2(fftsize, 0); // stores the result of each fft
+    std::vector<float> mags2(fftsize, 0); // stores the accumulated result of each fft
 
-    // apply gaussian window in place
-    volk_32fc_32f_multiply_32fc(fft_in, fft_in, d_windows[fftpower], copy_size);
+    for (int ii = 0; ii < nffts; ii++) {
 
-    // perform the fft
-    d_ffts[fftpower]->execute();
+        // TODO: verify VOLK alignment for these calls below....doesnt look like it
 
-    // get magnitudes squared from fft output
-    volk_32fc_magnitude_squared_32f(d_mags2, d_ffts[fftpower]->get_outbuf(), fftsize);
+        // copy in data to the right buffer, pad with zeros
+        gr_complex* fft_in = d_ffts[fftpower]->get_inbuf();
+        memset(fft_in, 0, sizeof(gr_complex) * fftsize);
+        memcpy(fft_in, data + offset + ii * fftsize, sizeof(gr_complex) * fftsize);
 
-    // fft shift and copy into STL object
-    std::vector<float> mags2(d_mags2, d_mags2 + fftsize);
+        // apply gaussian window in place
+        volk_32fc_32f_multiply_32fc(fft_in, fft_in, d_windows[fftpower], fftsize);
+
+        // perform the fft
+        d_ffts[fftpower]->execute();
+
+        // get magnitudes squared from fft output
+        volk_32fc_magnitude_squared_32f(
+            &fftm2[0], d_ffts[fftpower]->get_outbuf(), fftsize);
+        // accumulate
+
+        std::transform(
+            mags2.begin(), mags2.end(), fftm2.begin(), mags2.begin(), std::plus<float>());
+    }
+
+    // normalize accumulated fft bins
+    volk_32f_s32f_multiply_32f(&mags2[0], &mags2[0], 1.0 / nffts, fftsize);
+
+    // fft shift
     std::rotate(mags2.begin(), mags2.begin() + fftsize / 2, mags2.end());
+
 
     // build the frequency axis, centered at center_frequency, in Hz
     double step_size = sample_rate / (float)fftsize;
@@ -228,14 +244,22 @@ void cf_estimate_impl::pdu_handler(pmt::pmt_t pdu)
         freq_axis.push_back(start + step_size * i);
     }
 
-    // debug port publishes PSD
-    message_port_pub(PMTCONSTSTR__debug(),
-                     pmt::cons(metadata, pmt::init_f32vector(fftsize, &mags2[0])));
 
     //////////////////////////////////
-    // bandwidth estimation
+    // bandwidth estimation TODO RMS bw estimates are not good...
     //////////////////////////////////
     float bandwidth = rms_bw(mags2, freq_axis, center_frequency);
+
+
+    std::vector<gr_complex> dbg(fftsize, 0);
+    float nf = noise_density_db + 10 * log10(sample_rate / fftsize);
+    for (auto ii = 0; ii < fftsize; ii++)
+        dbg[ii] = gr_complex(10 * log10(mags2[ii] / d_fft_mag2_gains[fftpower]), nf);
+
+    // debug port publishes PSD
+    message_port_pub(PMTCONSTSTR__debug(),
+                     pmt::cons(metadata, pmt::init_c32vector(fftsize, &dbg[0])));
+
 
     //////////////////////////////////
     // center frequency estimation
