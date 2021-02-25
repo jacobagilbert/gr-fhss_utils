@@ -492,6 +492,22 @@ blocks:
     coordinate: [200, 804.0]
     rotation: 0
     state: enabled
+- name: fhss_utils_sigmf_meta_writer_0
+  id: fhss_utils_sigmf_meta_writer
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    filename: /data/latest.sigmf-meta
+    freq: int(center_freq)
+    rate: int(samp_rate)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [424, 716.0]
+    rotation: 180
+    state: true
 - name: fhss_utils_tagged_burst_to_pdu_0
   id: fhss_utils_tagged_burst_to_pdu
   parameters:
@@ -1506,22 +1522,6 @@ blocks:
     coordinate: [728, 1604.0]
     rotation: 0
     state: disabled
-- name: sandia_utils_sigmf_meta_writer_0
-  id: sandia_utils_sigmf_meta_writer
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    filename: /data/latest.sigmf-meta
-    freq: int(center_freq)
-    rate: int(samp_rate)
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [424, 692.0]
-    rotation: 180
-    state: true
 - name: uhd_usrp_source_1
   id: uhd_usrp_source
   parameters:
@@ -1999,7 +1999,7 @@ connections:
 - [fhss_utils_cf_estimate_0, out, pdu_utils_pdu_fir_filter_1, pdu_in]
 - [fhss_utils_fft_burst_tagger_0, '0', fhss_utils_tagged_burst_to_pdu_0, '0']
 - [fhss_utils_tagged_burst_to_pdu_0, cpdus, fhss_utils_cf_estimate_0, in]
-- [fhss_utils_tagged_burst_to_pdu_0, cpdus, sandia_utils_sigmf_meta_writer_0, in]
+- [fhss_utils_tagged_burst_to_pdu_0, cpdus, fhss_utils_sigmf_meta_writer_0, in]
 - [pdu_utils_pdu_fine_time_measure_0, pdu_out, virtual_sink_0_0, '0']
 - [pdu_utils_pdu_fir_filter_1, pdu_out, pdu_utils_pdu_fine_time_measure_0, pdu_in]
 - [pdu_utils_pdu_fir_filter_1, pdu_out, pylambda_pdu_lambda_0_0, pdu]
