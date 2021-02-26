@@ -1,8 +1,9 @@
 /* -*- c++ -*- */
 /*
- * Copyright 2018, 2019, 2020 National Technology & Engineering Solutions of Sandia, LLC
+ * Copyright 2018-2021 National Technology & Engineering Solutions of Sandia, LLC
  * (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government
  * retains certain rights in this software.
+ * Copyright 2021 Jacob Gilbert
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
@@ -29,7 +30,7 @@
 namespace gr {
 namespace fhss_utils {
 
-fft_burst_tagger::sptr fft_burst_tagger::make(float center_frequency,
+fft_burst_tagger::sptr fft_burst_tagger::make(float center_freq,
                                               int fft_size,
                                               int sample_rate,
                                               int burst_pre_len,
@@ -42,7 +43,7 @@ fft_burst_tagger::sptr fft_burst_tagger::make(float center_frequency,
                                               int lookahead,
                                               bool debug)
 {
-    return gnuradio::get_initial_sptr(new fft_burst_tagger_impl(center_frequency,
+    return gnuradio::get_initial_sptr(new fft_burst_tagger_impl(center_freq,
                                                                 fft_size,
                                                                 sample_rate,
                                                                 burst_pre_len,
@@ -59,7 +60,7 @@ fft_burst_tagger::sptr fft_burst_tagger::make(float center_frequency,
 /*
  * The private constructor
  */
-fft_burst_tagger_impl::fft_burst_tagger_impl(float center_frequency,
+fft_burst_tagger_impl::fft_burst_tagger_impl(float center_freq,
                                              int fft_size,
                                              int sample_rate,
                                              int burst_pre_len,
@@ -71,10 +72,10 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_frequency,
                                              int history_size,
                                              int lookahead,
                                              bool debug)
-    : gr::sync_block("fft_burst_tagger",
-                     gr::io_signature::make(1, 1, sizeof(gr_complex)),
-                     gr::io_signature::make(1, 1, sizeof(gr_complex))),
-      d_center_frequency(center_frequency),
+    : gr::block("fft_burst_tagger",
+                gr::io_signature::make(1, 1, sizeof(gr_complex)),
+                gr::io_signature::make(1, 1, sizeof(gr_complex))),
+      d_center_freq(center_freq),
       d_sample_rate(sample_rate),
       d_fft_size(fft_size),
       d_burst_pre_len(burst_pre_len),
@@ -82,7 +83,7 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_frequency,
       d_burst_id(0),
       d_pre_burst_id(0),
       d_n_tagged_bursts(0),
-      d_abs_fft_index(burst_pre_len - 1),
+      d_abs_fft_index(0),
       d_max_burst_len(max_burst_len),
       d_fft(NULL),
       d_history_size(history_size),
@@ -113,22 +114,20 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_frequency,
 
     set_output_multiple(d_fft_size);
 
-    // We need to keep d_burst_pre_len samples
-    // in the buffer to be able to tag a burst at it's start.
-    // Set the history to this + 1, so we always have
-    // this amount of samples available at the start of
-    // our input buffer.
-    set_history(d_burst_pre_len * d_fft_size + 1);
+    /*
+     * We need to keep a number of samples in the buffer to ensure we are not emitting
+     * data that might contain bursts that have not been tagged yet. Because bursts are
+     * tagged after being active for  `d_lookahead+1`  FFTs, and that tag is placed
+     * `d_burst_pre_len`  samples ahead of the detected start of the burst, we always need
+     * have this amount of samples available at the start of our input buffer. This also
+     * means that we start processing this many items into the work function, but emit
+     * data starting back at the beginning of the work function.
+     */
+    d_work_history_nffts = (d_lookahead + d_burst_pre_len + 1);
+    set_history(d_work_history_nffts * d_fft_size + 1);
+    d_work_sample_offset = d_work_history_nffts * d_fft_size;
 
-    // This makes sure we have at least d_lookahead FFTs in the
-    // buffer, not including history. There will always be enough
-    // data to convert a pre_burst to a burst, and still tag it
-    // d_burst_pre_len FFTs in the past.
-    // TODO: this call doesn't do anything?
-    // https://github.com/gnuradio/gnuradio/issues/1483
-    set_min_noutput_items((d_lookahead + 1) * d_fft_size);
-
-    // setup the FFT window
+    // setup the FFT windows
     d_window_f = (float*)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
     std::vector<float> window =
         fft::window::build(fft::window::WIN_BLACKMAN, d_fft_size, 0);
@@ -147,8 +146,6 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_frequency,
         fft::window::build(fft::window::WIN_BLACKMAN, d_fine_fft_size, 0);
     memcpy(d_fine_window_f, &fine_window[0], sizeof(float) * d_fine_fft_size);
 
-    d_baseline_history_f = (float*)volk_malloc(
-        sizeof(float) * d_fft_size * d_history_size, volk_get_alignment());
     d_baseline_sum_f =
         (float*)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
     d_magnitude_shifted_f =
@@ -165,7 +162,6 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_frequency,
     d_relative_history_f =
         (float*)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
 
-    memset(d_baseline_history_f, 0, sizeof(float) * d_fft_size * d_history_size);
     memset(d_baseline_sum_f, 0, sizeof(float) * d_fft_size);
     memset(d_magnitude_shifted_f, 0, sizeof(float) * d_fft_size);
     memset(d_fine_magnitude_shifted_f, 0, sizeof(float) * d_fft_size);
@@ -174,7 +170,7 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_frequency,
 
     memset(d_burst_mask_i, ~0, sizeof(uint32_t) * d_fft_size);
 
-    d_threshold = pow(10, threshold / 10) / d_history_size;
+    d_threshold = pow(10, threshold / 10);
     // d_threshold_low = d_threshold / 2.0;  // hysteresis
     d_threshold_low = d_threshold;
     if (d_debug) {
@@ -188,7 +184,7 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_frequency,
 
     d_peaks.resize(d_fft_size);
     d_current_peaks = 0;
-    d_bin_averages.resize(d_fft_size, movingAverage(d_history_size));
+    d_bin_averages.resize(d_fft_size, moving_average(d_history_size));
 
     if (max_bursts) {
         d_max_bursts = max_bursts;
@@ -227,7 +223,6 @@ fft_burst_tagger_impl::~fft_burst_tagger_impl()
     delete d_fft;
     delete d_fine_fft;
     volk_free(d_window_f);
-    volk_free(d_baseline_history_f);
     volk_free(d_baseline_sum_f);
     volk_free(d_relative_magnitude_f);
     volk_free(d_relative_history_f);
@@ -283,7 +278,6 @@ bool fft_burst_tagger_impl::compute_relative_magnitude(void)
     return true;
 }
 
-#define HIST(i) (d_baseline_history_f + (i % d_history_size) * d_fft_size)
 void fft_burst_tagger_impl::update_circular_buffer(void)
 {
     // We only update the average if there is no burst going on at the moment
@@ -297,6 +291,7 @@ void fft_burst_tagger_impl::update_circular_buffer(void)
 
         if (d_history_index == d_history_size) {
             d_history_primed = true;
+            // std::cout << "** HISTORY PRIMED at " << d_abs_fft_index << std::endl;
         }
     } else if ((d_abs_fft_index & 0x3) == 0) {
         for (size_t i = 0; i < d_fft_size; i++) {
@@ -313,16 +308,15 @@ void fft_burst_tagger_impl::update_circular_buffer(void)
         d_rel_hist_index = (d_rel_hist_index + 1) % d_rel_mag_hist;
 
         //DEBUG
-        if ((d_abs_fft_index & 0xfff) == 0) {
-            std::cout << "[";
-            for (size_t i = 0; i < d_fft_size; i++) {
-                //std::cout << i << "\t";
-                d_bin_averages[i].dump();
-                std::cout << "," << std::endl;
-            }
-            std::cout << "]" << std::endl;
+    if (0 & (d_abs_fft_index & 0xfff) == 0) {
+        std::cout << "[";
+        for (size_t i = 0; i < d_fft_size; i++) {
+            // std::cout << i << "\t";
+            d_bin_averages[i].print();
+            std::cout << "," << std::endl;
         }
-
+        std::cout << "]" << std::endl;
+    }
 }
 
 void fft_burst_tagger_impl::update_active_bursts(void)
@@ -346,7 +340,7 @@ void fft_burst_tagger_impl::reset()
 
 void fft_burst_tagger_impl::_reset()
 {
-
+    std::cout << "====================================================RESET\n";
     // close and tag all current bursts
     // d_peaks.clear();
     d_current_peaks = 0;
@@ -367,7 +361,6 @@ void fft_burst_tagger_impl::_reset()
     d_history_index = 0;
     d_history_primed = false;
     memset(d_baseline_sum_f, 0, sizeof(float) * d_fft_size);
-    memset(d_baseline_history_f, 0, sizeof(float) * d_fft_size * d_history_size);
     memset(d_burst_mask_i, ~0, sizeof(uint32_t) * d_fft_size);
 }
 
@@ -555,6 +548,7 @@ void fft_burst_tagger_impl::create_new_bursts(const gr_complex* input)
     // of time.
     
     auto b = d_pre_bursts.begin();
+    // std::cout << "Iterating over " << d_pre_bursts.size() << " pre bursts\n";
     while (b != d_pre_bursts.end()) {
 
         // if d_lookahead peaks have been measured, convert the pre_burst into a burst
@@ -562,14 +556,16 @@ void fft_burst_tagger_impl::create_new_bursts(const gr_complex* input)
             burst new_b;
             new_b.start = b->start;
             new_b.last_active = d_abs_fft_index;
+
             // use the max peak's bin and magnitude for the burst
             // take the last N samples up to this point.
             size_t offset =
-                d_abs_fft_index * d_fft_size - d_fine_fft_size - nitems_read(0);
+                (d_abs_fft_index)*d_fft_size - d_fine_fft_size - nitems_read(0);
             volk_32fc_32f_multiply_32fc(d_fine_fft->get_inbuf(),
                                         &input[offset],
                                         d_fine_window_f,
                                         d_fine_fft_size);
+
 #ifdef __USE_MKL2__
             DftiComputeForward(
                 m_fine_fft, d_fine_fft->get_inbuf(), d_fine_fft->get_outbuf());
@@ -583,7 +579,6 @@ void fft_burst_tagger_impl::create_new_bursts(const gr_complex* input)
                 d_fine_magnitude_shifted_f + fftd2, d_fine_fft->get_outbuf(), fftd2);
             volk_32fc_magnitude_squared_32f(
                 d_fine_magnitude_shifted_f, d_fine_fft->get_outbuf() + fftd2, fftd2);
-
             // Search around the peak to try to estimate the bandwidth
             size_t factor = d_fine_fft_size / d_fft_size;
             // Ensure that a center bin - burst_width < 0 becomes a 1, not a very large
@@ -648,6 +643,8 @@ void fft_burst_tagger_impl::create_new_bursts(const gr_complex* input)
                 b = d_pre_bursts.erase(b);
                 continue;
             }
+
+
             new_b.id = d_burst_id++;
             // printf("%zu: center = %d\n", new_b.id, new_b.center_bin);
             // printf("bandwidth info 1: snr = %f, min = %f, max = %f\n", snr_est,
@@ -666,6 +663,7 @@ void fft_burst_tagger_impl::create_new_bursts(const gr_complex* input)
                 new_b.valid = true;
             }
             d_bursts.push_back(new_b);
+
             // printf("created new burst (%lu) at offset %lu, bin = %zu\n", new_b.id,
             // new_b.start*d_fft_size, new_b.center_bin); printf("center bin is %d (%d),
             // magnitude is %f (%f)\n", new_b.center_bin, b->peaks.front().bin,
@@ -734,6 +732,7 @@ void fft_burst_tagger_impl::update_potential_bursts(void)
         }
         ++b;
     }
+    // std::cout << "done\n";
 }
 
 void fft_burst_tagger_impl::remove_currently_tracked_bursts(void)
@@ -880,8 +879,8 @@ void fft_burst_tagger_impl::tag_new_bursts(void)
         pmt::pmt_t value = pmt::make_dict();
         value = pmt::dict_add(value, PMTCONSTSTR__burst_id(), pmt::from_uint64(b.id));
         value = pmt::dict_add(value, PMTCONSTSTR__relative_frequency(), pmt::from_float(relative_frequency));
-        value =
-            pmt::dict_add(value, PMTCONSTSTR__center_frequency(), pmt::from_float(d_center_frequency));
+        value = pmt::dict_add(
+            value, PMTCONSTSTR__center_frequency(), pmt::from_float(d_center_freq));
         value = pmt::dict_add(value, PMTCONSTSTR__magnitude(), pmt::from_float(b.magnitude));
         value = pmt::dict_add(value, PMTCONSTSTR__sample_rate(), pmt::from_float(d_sample_rate));
         value = pmt::dict_add(
@@ -903,8 +902,8 @@ void fft_burst_tagger_impl::tag_gone_bursts(int noutput_items)
     while (b != std::end(d_gone_bursts)) {
         uint64_t output_index = b->stop * d_fft_size;
 
-        if (nitems_read(0) <= output_index &&
-            output_index < nitems_read(0) + noutput_items) {
+        if (nitems_written(0) <= output_index &&
+            output_index < nitems_written(0) + noutput_items) {
             pmt::pmt_t key = PMTCONSTSTR__gone_burst();
             pmt::pmt_t value = pmt::make_dict();
             value = pmt::dict_add(value, PMTCONSTSTR__burst_id(), pmt::from_uint64(b->id));
@@ -923,40 +922,54 @@ void fft_burst_tagger_impl::tag_gone_bursts(int noutput_items)
 
 uint64_t fft_burst_tagger_impl::get_n_tagged_bursts() { return d_n_tagged_bursts; }
 
-int fft_burst_tagger_impl::work(int noutput_items,
-                                gr_vector_const_void_star& input_items,
-                                gr_vector_void_star& output_items)
+
+int fft_burst_tagger_impl::general_work(int noutput_items,
+                                        gr_vector_int& ninput_items,
+                                        gr_vector_const_void_star& input_items,
+                                        gr_vector_void_star& output_items)
 {
     std::lock_guard<std::mutex> lock(d_work_mutex);
     d_total_timer.start();
 
     const gr_complex* in = (const gr_complex*)input_items[0];
+    const gr_complex* in_adj = in + d_work_sample_offset;
     gr_complex* out = (gr_complex*)output_items[0];
 
-    assert(noutput_items % d_fft_size == 0);
+    int nffts = std::max(
+        (std::min((int)(ninput_items[0] - d_work_sample_offset), noutput_items)) /
+            d_fft_size,
+        0);
+    int nitems = nffts * d_fft_size;
 
-    // check for center frequency updates
-    std::vector<tag_t> freq_tags;
-    get_tags_in_window(freq_tags, 0, 0, noutput_items, PMTCONSTSTR__rx_freq());
-    if (freq_tags.size() > 0) {
-        d_center_frequency = pmt::to_double(freq_tags[freq_tags.size() - 1].value);
+    int produced = nitems;
+    // no data is produced until we work through the history
+    if (d_abs_fft_index < d_work_history_nffts) {
+        produced = 0;
+        nffts = std::min(nffts, (int)(d_work_history_nffts - d_abs_fft_index));
+        nitems = nffts * d_fft_size;
     }
 
-    // start at next unprocessed FFT
-    int start_offset = (d_abs_fft_index + 1) * d_fft_size - nitems_read(0);
-    // we have noutput_items + d_burst_pre_len*d_fft_size items in the buffer (due to
-    // history)
-    for (int i = start_offset; i < noutput_items + d_burst_pre_len * d_fft_size;
-         i += d_fft_size) {
+    // we always consume however many FFTs were processed, after starting we consume this
+    // many also
+    int consumed = nitems;
 
-        // keep track of current absolute FFT number
-        d_abs_fft_index = (nitems_read(0) + i) / d_fft_size;
-        // printf("fft_burst_tagger: nitems read: %lu, noutput_items: %d, i: %d, fft:
-        // %lu\n", nitems_read(0), noutput_items, i, d_abs_fft_index);
+    std::vector<tag_t> freq_tags;
+    get_tags_in_window(freq_tags,
+                       0,
+                       d_work_sample_offset,
+                       d_work_sample_offset + nitems,
+                       PMTCONSTSTR__rx_freq());
+    if (freq_tags.size() > 0) {
+        d_center_freq = pmt::to_double(freq_tags[freq_tags.size() - 1].value);
+    }
+
+    // loop through input data processing it one FFT at a time
+    for (int ii = 0; ii < nffts; ii++) {
 
         // Apply a blackman window and take fft
         d_fft_timer.start();
-        volk_32fc_32f_multiply_32fc(d_fft->get_inbuf(), &in[i], d_window_f, d_fft_size);
+        volk_32fc_32f_multiply_32fc(
+            d_fft->get_inbuf(), &in_adj[ii * d_fft_size], d_window_f, d_fft_size);
 #ifdef __USE_MKL__
         DftiComputeForward(m_fft, d_fft->get_inbuf(), d_fft->get_outbuf());
 #else
@@ -971,11 +984,19 @@ int fft_burst_tagger_impl::work(int noutput_items,
             d_magnitude_shifted_f, d_fft->get_outbuf() + fftd2, fftd2);
         d_fft_timer.end();
 
+        // this will be skipped if the noise floor estimate is not valid
         if (compute_relative_magnitude()) {
+
+            /*
+             * checks pre burst list to update bursts that are still present
+             */
             d_update_pb_timer.start();
             update_potential_bursts();
             d_update_pb_timer.end();
 
+            /*
+             * checks burst list to update bursts that are still present
+             */
             d_update_ab_timer.start();
             update_active_bursts();
             d_update_ab_timer.end();
@@ -984,6 +1005,10 @@ int fft_burst_tagger_impl::work(int noutput_items,
                 extract_peaks();
                 save_peaks_to_debug_file((char*)"/tmp/fft_burst_tagger-peaks.log");
             }
+
+            /*
+             * prunes the list of current bursts
+             */
             d_remove_tb_timer.start();
             remove_currently_tracked_bursts();
             d_remove_tb_timer.end();
@@ -996,16 +1021,26 @@ int fft_burst_tagger_impl::work(int noutput_items,
                 save_peaks_to_debug_file(
                     (char*)"/tmp/fft_burst_tagger-peaks-filtered.log");
             }
+
+            /*
+             * if any bursts are gone, this will remove them
+             */
             d_delete_timer.start();
             delete_gone_bursts();
             d_delete_timer.end();
 
+            /*
+             * checks FFT data to see if any new pre bursts have been identified
+             */
             d_new_pb_timer.start();
             create_new_potential_bursts();
             d_new_pb_timer.end();
 
+            /*
+             * checks pre burst list to see if any should be converted to bursts
+             */
             d_new_b_timer.start();
-            create_new_bursts(in);
+            create_new_bursts(in_adj);
             d_new_b_timer.end();
         }
 
@@ -1013,40 +1048,48 @@ int fft_burst_tagger_impl::work(int noutput_items,
         update_circular_buffer();
         d_update_cb_timer.end();
 
+
+        // usleep(5000);//TODO debug
+
+        // keep track of current absolute FFT number
+        d_abs_fft_index++;
+    }
+
+
         std::vector<gr_complex> dbg(d_fft_size);
-        for (auto ii=0; ii<d_fft_size; ii++) {
-            dbg[ii] = 10*log10(d_magnitude_shifted_f[ii]) + 1j*10*log10(1e-10+(d_threshold*d_fft_size)*d_baseline_sum_f[0+ii]/d_history_size);
+        for (auto jj = 0; jj < d_fft_size; jj++) {
+            dbg[jj] = 10 * log10(d_magnitude_shifted_f[jj]) +
+                      1j * 10 *
+                          log10(1e-10 + (d_threshold * d_fft_size) *
+                                            d_baseline_sum_f[0 + jj] / d_history_size);
         }
         // debug port publishes PSD
         message_port_pub(PMTCONSTSTR__debug(),
                          pmt::cons(pmt::PMT_NIL, pmt::init_c32vector(d_fft_size, &dbg[0])));
-        usleep(10000);
-    }
 
     d_other.start();
-    int ffts_to_output;
-    if (d_pre_bursts.size() != 0) {
-        ffts_to_output =
-            d_pre_bursts.begin()->start - nitems_read(0) / d_fft_size - d_rel_mag_hist;
-    } else {
-        ffts_to_output = noutput_items / d_fft_size - d_rel_mag_hist;
-    }
-    if (ffts_to_output < 0)
-        ffts_to_output = 0;
-    memcpy(out, in, sizeof(gr_complex) * ffts_to_output * d_fft_size);
+    int ffts_to_output = nffts;
+
 
     // TODO: these may write tags into the future, is that a problem?
     tag_new_bursts();
-    tag_gone_bursts(noutput_items);
+    tag_gone_bursts(produced);
+
     d_other.end();
     d_total_timer.end();
 
-    if (ffts_to_output == 0)
+
+    if (nffts == 0)
         usleep(100);
 
-    // Tell runtime system how many output items we produced.
-    return ffts_to_output * d_fft_size;
+    consume_each(consumed);
+
+    if (produced) {
+        memcpy(out, in, sizeof(gr_complex) * produced);
+        return produced;
+    }
+    return 0;
 }
 
 } /* namespace fhss_utils */
-} /* namespace gr */
+} /* namespace gr */ // check for center frequency updates

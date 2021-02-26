@@ -3,6 +3,7 @@
  * Copyright 2018, 2019, 2020 National Technology & Engineering Solutions of Sandia, LLC
  * (NTESS). Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government
  * retains certain rights in this software.
+ * Copyright 2021 Jacob Gilbert
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
@@ -19,7 +20,12 @@
 #include "mkl_dfti.h"
 #endif
 
-// Used for profiling timer
+/*
+ * DO_TIMER is used for profiling timer
+ *
+ * WARNING: Use of profiling timers has performance implications, they are only complied
+ * if this option is enabled.
+ */
 //#define DO_TIMER
 #include <chrono>
 using namespace std::chrono;
@@ -33,17 +39,11 @@ struct peak {
     float relative_magnitude;
 };
 
-/**
- * timer class blah blah
- */
 class timer
 {
 public:
-    /**
-     * Constructor
-     */
     timer() : total(0) {}
-// The timers can take a lot of extra cycles.  Only compile them in if wanted.
+
 #ifndef DO_TIMER
     void start() {}
     void end() {}
@@ -64,21 +64,22 @@ private:
     high_resolution_clock::time_point start_time;
 }; // end class timer
 
+
 /**
- * Calculates a moving average utilizing circular buffer
+ * Calculates a moving average utilizing circular buffer, used in this block for the noise
+ * estimate in each bin.
  */
-class movingAverage
+class moving_average
 {
-    // Calculate a moving average of floats using a circular buffer.
 public:
     /**
      * Constructor
      *
-     * @param window - number of samples in buffer
+     * @param size - size in samples of the moving average circular buffer
      */
-    movingAverage(size_t window) : N(window)
+    moving_average(size_t size) : N(size)
     {
-        sum = curIndex = 0;
+        sum = current_index = 0;
         hist.resize(N);
         memset(&hist[0], 0, sizeof(float) * N);
     }
@@ -91,13 +92,17 @@ public:
      */
     float add(float p)
     {
-        sum += p - hist[curIndex];
-        hist[curIndex++] = p;
-        if (curIndex == N)
-            curIndex = 0;
-        return sum;
+        sum += p - hist[current_index];
+        hist[current_index++] = p;
+        if (current_index == N)
+            current_index = 0;
+        return sum / N;
     }
-    void dump()
+
+    /**
+     * Print the contents of the a given moving average buffer in a user friendly way.
+     */
+    void print()
     {
         std::cout << "[";
         for (auto ii=0; ii < N-1; ii++)
@@ -107,11 +112,15 @@ public:
 
 private:
     std::vector<float> hist;
-    size_t curIndex;
+    size_t current_index;
     size_t N;
     float sum;
-}; // end class movingAverage
+}; // end class moving_average
 
+/*
+ * A pre burst is energy that has been detected as being above the configured threshold,
+ * but is not yet sustained long enough to be considered a burst.
+ */
 struct pre_burst {
     uint64_t start;
     uint64_t peak_count;
@@ -123,6 +132,10 @@ struct pre_burst {
     float max_relative_magnitude;
 };
 
+/*
+ * A burst is sustained energy above the configured threshold and will result in a tag
+ * being emitted.
+ */
 struct burst {
     uint64_t start;
     uint64_t stop;
@@ -244,6 +257,8 @@ private:
     uint64_t extra;
     uint64_t d_rel_mag_hist;
     uint64_t d_rel_hist_index;
+    uint32_t d_work_history_nffts;
+    uint32_t d_work_sample_offset;
 
     float d_bin_width_db;
     float d_fft_gain_db;
@@ -260,7 +275,7 @@ private:
     float* d_ones_f;
     float d_threshold;
     float d_threshold_low;
-    float d_center_frequency;
+    float d_center_freq;
     float d_filter_bandwidth;
 
     FILE* d_burst_debug_file;
@@ -277,7 +292,7 @@ private:
     std::list<burst> d_new_bursts;
     std::list<burst> d_gone_bursts;
     std::vector<owners> d_mask_owners;
-    std::vector<movingAverage> d_bin_averages;
+    std::vector<moving_average> d_bin_averages;
 
     bool compute_relative_magnitude(void);
     void update_circular_buffer(void);
@@ -320,21 +335,21 @@ public:
     /**
      * Constructor
      *
-     * @param center_frequency - center frequency of incoming stream, unit Hz
-     * @param fft_size -
+     * @param center_freq - center frequency of data stream, unit Hz
+     * @param fft_size - number of bins in the primary FFT
      * @param sample_rate - sample rate of incoming stream
-     * @param burst_pre_len - XXX unit seconds
-     * @param burst_post_len - XXX unit seconds
-     * @param burst_width -XXX unit Hz
-     * @param max_bursts - XXX
-     * @param max_burst_len - XXX
-     * @param threshold - XXX unit dB
-     * @param history_size - XXX
-     * @param lookahead - XXX unit seconds
+     * @param burst_pre_len - number of FFTs before the burst to place the tag
+     * @param burst_post_len - number of FFTs after the burst to place the tag
+     * @param burst_width - estimated bandwidth of the burst in Hz
+     * @param max_bursts - maximum number of bursts simultaneously detected
+     * @param max_burst_len - bursts exceeding this length wwill be tagged immediately
+     * @param threshold - threshold above dynamic noise average (dB)
+     * @param history_size - number of FFTs to compute noise estimate over
+     * @param lookahead - number of FFTs a preburst must be present to convert to a burst
      * @param debug - true enables debug functionality
      *
      */
-    fft_burst_tagger_impl(float center_frequency,
+    fft_burst_tagger_impl(float center_freq,
                           int fft_size,
                           int sample_rate,
                           int burst_pre_len,
@@ -367,9 +382,10 @@ public:
 
     bool stop();
 
-    int work(int noutput_items,
-             gr_vector_const_void_star& input_items,
-             gr_vector_void_star& output_items);
+    int general_work(int noutput_items,
+                     gr_vector_int& ninput_items,
+                     gr_vector_const_void_star& input_items,
+                     gr_vector_void_star& output_items);
 
     /**
      * Sets max burst bandwidth

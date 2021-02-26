@@ -21,7 +21,7 @@ namespace fhss_utils {
  * \ingroup fhss_utils
  *
  */
-class FHSS_UTILS_API fft_burst_tagger : virtual public gr::sync_block
+class FHSS_UTILS_API fft_burst_tagger : virtual public gr::block
 {
 public:
     typedef boost::shared_ptr<fft_burst_tagger> sptr;
