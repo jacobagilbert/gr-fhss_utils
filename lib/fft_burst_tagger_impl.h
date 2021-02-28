@@ -302,7 +302,7 @@ private:
     void update_active_bursts(void);
     void update_potential_bursts(void);
     void delete_gone_bursts(void);
-    void create_new_bursts(const gr_complex* input);
+    void create_new_bursts(const gr_complex* input, int fft);
     void create_new_potential_bursts(void);
     void tag_new_bursts(void);
     void tag_gone_bursts(int noutput_items);
@@ -313,6 +313,7 @@ private:
     void remove_ownership(const burst& b);
 
     bool check_prev_magnitude(size_t bin);
+    void publish_debug(void);
 
     std::mutex d_work_mutex;
 
