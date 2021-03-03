@@ -77,7 +77,8 @@ public:
      */
     moving_average(size_t size) : N(size)
     {
-        sum = current_index = 0;
+        sum = current_index = 0.0;
+        pp = 0.0;
         hist.resize(N);
         memset(&hist[0], 0, sizeof(float) * N);
     }
@@ -90,8 +91,9 @@ public:
      */
     float add(float p)
     {
-        sum += p - hist[current_index];
-        hist[current_index++] = p;
+        sum += pp - hist[current_index];
+        hist[current_index++] = pp;
+        pp = p;
         if (current_index == N)
             current_index = 0;
         return sum / N;
@@ -113,6 +115,7 @@ private:
     size_t current_index;
     size_t N;
     float sum;
+    float pp;   // delay noise floor sum by one FFT
 }; // end class moving_average
 
 /*
@@ -259,7 +262,6 @@ private:
     uint32_t d_work_sample_offset;
 
     float d_bin_width_db;
-    float d_fft_gain_db;
 
     float* d_window_f;
     float* d_magnitude_shifted_f;
@@ -270,6 +272,7 @@ private:
     float* d_relative_magnitude_f;
     float* d_relative_history_f;
     uint32_t* d_burst_mask_i;
+    uint32_t* d_burst_mask_i1; // 1 FFT buffer to prevent burst energy from impacting noise
     float* d_ones_f;
     float d_threshold;
     float d_threshold_low;

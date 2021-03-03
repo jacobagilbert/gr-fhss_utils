@@ -134,18 +134,19 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_freq,
     set_history(d_work_history_nffts * d_fft_size + 1);
     d_work_sample_offset = d_work_history_nffts * d_fft_size;
 
-    // setup the FFT windows
+    // setup the FFT windows including compensation for the FFT size and window gain
     d_window_f = (float*)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
     std::vector<float> window =
         fft::window::build(fft::window::WIN_BLACKMAN, d_fft_size, 0);
     memcpy(d_window_f, &window[0], sizeof(float) * d_fft_size);
-    float gain_rms = 0;
+    double g = 0;
     for (auto& n : window)
-        gain_rms += n * n;
-    gain_rms = sqrt(gain_rms / d_fft_size);
-
-    d_fft_gain_db = 20 * log10(d_fft_size * gain_rms);
-    d_bin_width_db = 10 * log10(d_sample_rate / d_fft_size);
+        g += n * n;
+    // scale the window to compensate for FFT size and window rms gain:
+    //   gain_rms^2 * fftsize = sqrt(win_gain / fftsize)^2 * fftsize = win_gain
+    for (auto ii=0; ii < d_fft_size; ii++) {
+        d_window_f[ii] /= g*2;      // WHY: magic number so power/noise are correct
+    }
 
     // TODO: this may not be the best window to use for the application
     d_fine_window_f =
@@ -153,7 +154,15 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_freq,
     std::vector<float> fine_window =
         fft::window::build(fft::window::WIN_BLACKMAN, d_fine_fft_size, 0);
     memcpy(d_fine_window_f, &fine_window[0], sizeof(float) * d_fine_fft_size);
-
+    g = 0;
+    for (auto& n : fine_window)
+        g += n * n;
+    // scale the window to compensate for FFT size and window rms gain:
+    //   gain_rms^2 * fftsize = sqrt(win_gain / fftsize)^2 * fftsize = win_gain
+    for (auto ii=0; ii < d_fine_fft_size; ii++) {
+        d_fine_window_f[ii] /= g*2;  // WHY: magic number so power/noise are correct
+    }
+    
     d_baseline_sum_f =
         (float*)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
     d_magnitude_shifted_f =
@@ -164,7 +173,10 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_freq,
         (float*)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
     d_burst_mask_i =
         (uint32_t*)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
+    d_burst_mask_i1 =
+        (uint32_t*)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
 
+    d_bin_width_db = 10 * log10(d_sample_rate / d_fft_size);
     d_rel_mag_hist = 1;
     d_rel_hist_index = 0;
     d_relative_history_f =
@@ -177,6 +189,7 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_freq,
     extra = 0;
 
     memset(d_burst_mask_i, ~0, sizeof(uint32_t) * d_fft_size);
+    memset(d_burst_mask_i1, ~0, sizeof(uint32_t) * d_fft_size);
 
     d_threshold = pow(10, threshold / 10);
 
@@ -238,6 +251,7 @@ fft_burst_tagger_impl::~fft_burst_tagger_impl()
     volk_free(d_fine_window_f);
     volk_free(d_fine_magnitude_shifted_f);
     volk_free(d_burst_mask_i);
+    volk_free(d_burst_mask_i1);
     if (d_burst_debug_file) {
         fclose(d_burst_debug_file);
     }
@@ -302,7 +316,7 @@ void fft_burst_tagger_impl::update_circular_buffer(void)
         }
     } else if ((d_abs_fft_index & 0x3) == 0) {
         for (size_t i = 0; i < d_fft_size; i++) {
-            if (d_burst_mask_i[i] != 0) {
+            if (d_burst_mask_i[i] != 0 && d_burst_mask_i1[i] != 0) {
                 d_baseline_sum_f[i] = d_bin_averages[i].add(d_magnitude_shifted_f[i]);
             }
         }
@@ -358,6 +372,7 @@ void fft_burst_tagger_impl::_reset()
     d_history_primed = false;
     memset(d_baseline_sum_f, 0, sizeof(float) * d_fft_size);
     memset(d_burst_mask_i, ~0, sizeof(uint32_t) * d_fft_size);
+    memset(d_burst_mask_i1, ~0, sizeof(uint32_t) * d_fft_size);
 }
 
 void fft_burst_tagger_impl::delete_gone_bursts(void)
@@ -429,7 +444,6 @@ void fft_burst_tagger_impl::create_new_potential_bursts(void)
                     }
                 }
 
-
                 // The burst might have started one FFT earlier
                 b.start = d_abs_fft_index - d_burst_pre_len - d_rel_mag_hist;
                 b.id = d_pre_burst_id++;
@@ -461,6 +475,7 @@ void fft_burst_tagger_impl::create_new_potential_bursts(void)
 void fft_burst_tagger_impl::add_ownership(const pre_burst& b)
 {
     for (size_t i = b.start_bin; i <= b.stop_bin; i++) {
+        d_burst_mask_i1[i] = d_burst_mask_i[i];
         d_burst_mask_i[i] = 0;
         d_mask_owners[i].push_back(b.id);
     }
@@ -472,11 +487,13 @@ void fft_burst_tagger_impl::update_ownership(const pre_burst& pb, const burst& b
         // There is a chance that we will have two pre-bursts that
         for (size_t i = pb.start_bin; i <= pb.stop_bin; i++) {
             if (d_mask_owners[i].size() == 1) {
+                d_burst_mask_i1[i] = d_burst_mask_i[i];
                 d_burst_mask_i[i] = ~0;
             }
             d_mask_owners[i].erase(pb.id);
         }
         for (size_t i = b.start_bin; i <= b.stop_bin; i++) {
+            d_burst_mask_i1[i] = d_burst_mask_i[i];
             d_burst_mask_i[i] = 0;
             d_mask_owners[i].push_back(b.id);
         }
@@ -491,6 +508,7 @@ void fft_burst_tagger_impl::remove_ownership(const pre_burst& b)
 {
     for (size_t i = b.start_bin; i <= b.stop_bin; i++) {
         if (d_mask_owners[i].size() == 1) {
+            d_burst_mask_i1[i] = d_burst_mask_i[i];
             d_burst_mask_i[i] = ~0;
         }
         d_mask_owners[i].erase(b.id);
@@ -501,6 +519,7 @@ void fft_burst_tagger_impl::remove_ownership(const burst& b)
 {
     for (size_t i = b.start_bin; i <= b.stop_bin; i++) {
         if (d_mask_owners[i].size() == 1) {
+            d_burst_mask_i1[i] = d_burst_mask_i[i];
             d_burst_mask_i[i] = ~0;
         }
         d_mask_owners[i].erase(b.id);
@@ -817,9 +836,10 @@ void fft_burst_tagger_impl::tag_new_bursts(void)
         for (int i = b.start_bin; i <= b.stop_bin; i++) {
             noise_density += d_baseline_sum_f[i];
         }
+
         // normalize by total number of bins that form the sum
-        noise_density /= (b.stop_bin - b.start_bin + 1) * d_history_size;
-        noise_density = 10 * log10(noise_density) - d_fft_gain_db - d_bin_width_db;
+        noise_density /= (b.stop_bin - b.start_bin + 1);
+        noise_density = 10 * log10(noise_density) - d_bin_width_db;
         // noise density estimation complete
 
         pmt::pmt_t value = pmt::make_dict();
@@ -874,9 +894,8 @@ void fft_burst_tagger_impl::publish_debug()
     // which allows this to be plotted on the time sink
     for (auto jj = 0; jj < d_fft_size; jj++) {
         dbg[jj] = 10 * log10(d_magnitude_shifted_f[jj]) +
-                  1j * 10 *
-                      log10(1e-10 + (d_threshold * d_fft_size) *
-                                        d_baseline_sum_f[0 + jj] / d_history_size);
+                  1j * 10 * log10(1e-30 + 1.0 * d_baseline_sum_f[0 + jj]);
+//                  1j * 10 * log10(1e-30 + d_threshold * d_baseline_sum_f[0 + jj]);
     }
 
     message_port_pub(PMTCONSTSTR__debug(),
