@@ -25,20 +25,28 @@ const int MIN_FFT_POWER = 5;    // smallest FFT this block will use
 const int MIN_NFFTS = 4;        // minimum number of FFTs this block will average
 // PDUs should be large enough to take MIN_NFFTS of size pow(2,MIN_FFT_POWER)
 
-cf_estimate::sptr cf_estimate::make(int method, std::vector<float> channel_freqs)
+
+/*
+ *    TODO    there is WAY too much use of copy constructors for std::vectors
+ *    TODO    in the various helper functions implemneted in this block...
+ */
+
+
+cf_estimate::sptr cf_estimate::make(int method, std::vector<float> channel_freqs, float snr_min)
 {
-    return gnuradio::get_initial_sptr(new cf_estimate_impl(method, channel_freqs));
+    return gnuradio::get_initial_sptr(new cf_estimate_impl(method, channel_freqs, snr_min));
 }
 
 /*
  * The private constructor
  */
-cf_estimate_impl::cf_estimate_impl(int method, std::vector<float> channel_freqs)
+cf_estimate_impl::cf_estimate_impl(int method, std::vector<float> channel_freqs, float snr_min)
     : gr::block("cf_estimate",
                 gr::io_signature::make(0, 0, 0),
                 gr::io_signature::make(0, 0, 0)),
       d_method(method),
-      d_channel_freqs(channel_freqs)
+      d_channel_freqs(channel_freqs),
+      d_snr_min(snr_min)
 {
     message_port_register_in(PMTCONSTSTR__in());
     message_port_register_out(PMTCONSTSTR__out());
@@ -108,7 +116,7 @@ void cf_estimate_impl::fft_setup(int power)
         // scale the window to compensate for FFT size and window rms gain:
         //   gain_rms^2 * fftsize = sqrt(win_gain / fftsize)^2 * fftsize = win_gain
         for (auto j = 0; j < fftsize; j++) {
-            d_windows[i][j] /= g*4;     // WHY: magic number so power/noise are correct
+            d_windows[i][j] /= g*4;     // FIXME: magic number so power/noise are correct
         }
     }
 }
@@ -227,8 +235,16 @@ void cf_estimate_impl::pdu_handler(pmt::pmt_t pdu)
     // fft shift
     std::rotate(mags2.begin(), mags2.begin() + fftsize / 2, mags2.end());
 
-    // build the frequency axis, centered at center_frequency, in Hz
+    // if the noise floor was not in the metadata, set it to the smallest value
     double bin_size = sample_rate / (float)fftsize;
+    float noise_floor_db;
+    if (std::isnan(noise_density_db)) {
+        noise_floor_db = 10 * log10(*std::min_element(std::begin(mags2), std::end(mags2)));
+    } else {
+        noise_floor_db = noise_density_db + 10 * log10(bin_size);
+    }
+
+    // build the frequency axis, centered at center_frequency, in Hz
     double start = center_frequency - (sample_rate / 2.0);
     std::vector<float> freq_axis;
     freq_axis.reserve(fftsize);
@@ -236,32 +252,26 @@ void cf_estimate_impl::pdu_handler(pmt::pmt_t pdu)
         freq_axis.push_back(start + bin_size * i);
     }
 
+        // generate the debug message TODO: make conditional
+    d_bug.clear();
+    d_bug.reserve(fftsize);
+    for (auto ii = 0; ii < fftsize; ii++)
+        d_bug.push_back(gr_complex(10 * log10(mags2[ii]), noise_floor_db));
 
     //////////////////////////////////
-    // bandwidth estimation TODO RMS bw estimates are not good...
+    // center frequency and bandwidth estimation
     //////////////////////////////////
     float bandwidth = rms_bw(mags2, freq_axis, center_frequency);
 
-
-    std::vector<gr_complex> dbg(fftsize, 0);
-    float nf = noise_density_db + 10 * log10(bin_size);
-    for (auto ii = 0; ii < fftsize; ii++)
-        dbg[ii] = gr_complex(10 * log10(mags2[ii]), nf);
-
-    // debug port publishes PSD
-    message_port_pub(PMTCONSTSTR__debug(),
-                     pmt::cons(metadata, pmt::init_c32vector(fftsize, &dbg[0])));
-
-
-    //////////////////////////////////
-    // center frequency estimation
-    //////////////////////////////////
     double shift = 0.0;
     // these methods return 'shift', a frequency correction from [-0.5,0.5]
     if (d_method == RMS) {
         shift = this->rms(mags2, freq_axis, center_frequency, sample_rate);
     } else if (d_method == HALF_POWER) {
         shift = this->half_power(mags2);
+    } else if (d_method == MIDDLE_OUT) {
+        // this is going to update the bandwdith value too
+        shift = this->middle_out(mags2, freq_axis, noise_floor_db, bandwidth);
     } else {
         // in COERCE mode no estimation is performed
     }
@@ -269,6 +279,11 @@ void cf_estimate_impl::pdu_handler(pmt::pmt_t pdu)
     // if a frequency coercion list has been provided, apply that
     shift +=
         this->coerce_frequency((center_frequency + (shift * sample_rate)), sample_rate);
+
+    // debug port publishes PSD
+    message_port_pub(PMTCONSTSTR__debug(),
+                     pmt::cons(metadata, pmt::init_c32vector(fftsize, &d_bug[0])));
+
 
     //////////////////////////////////
     // correct the burst using the new center frequency
@@ -402,6 +417,44 @@ float cf_estimate_impl::rms_bw(std::vector<float> mags2,
 
     // normalize by total energy and take sqrt
     return std::sqrt(top_integral / energy);
+}
+
+/*
+ * this computes the bandwidth as defined by the portion of the signal that is
+ * continuously greater than halfway betwen the peak-8dB and the noise floor
+ */
+float cf_estimate_impl::middle_out(std::vector<float> mags2,
+                                   std::vector<float> freq_axis,
+                                   float noise_floor_db,
+                                   float &bandwidth)
+{
+    auto peak = std::max_element(std::begin(mags2), std::end(mags2));
+    int peak_idx = std::distance(std::begin(mags2), peak);
+
+    // determine the bandwidth threshold; linear-scale mag^2
+    float threshold = (10 * log10(*peak) - d_snr_min + noise_floor_db) / 2.0;
+    threshold = pow(10, threshold / 10.0);
+    //threshold = pow(10, (noise_floor_db-0.1) / 10.0);
+
+    // now determine the first index below the threshold in either direction
+    auto high(peak);
+    auto low(peak);
+    for (; high < mags2.end()-1; high++)
+        if (*high <= threshold) break;
+    for (; low > mags2.begin(); low--)
+        if (*low <= threshold) break;
+    int high_idx = peak_idx + std::distance(peak, high);
+    int low_idx = peak_idx + std::distance(peak, low);
+
+    bandwidth = freq_axis[high_idx] - freq_axis[low_idx];
+    float shift = (high_idx + low_idx) *0.5 - (mags2.size() - 1) * 0.5;
+    shift /= mags2.size();
+
+    for (int i = low_idx; i <= high_idx; i++)
+        d_bug[i] = std::real(d_bug[i]) + 1j * 10*log10(threshold);
+    d_bug[peak_idx] = std::real(d_bug[peak_idx]) + 1j * 10*log10(*peak);
+
+    return shift;
 }
 
 /*

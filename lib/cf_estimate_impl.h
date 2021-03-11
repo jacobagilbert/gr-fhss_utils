@@ -27,6 +27,8 @@ private:
 
     // this block supports a few different estimation methods
     int d_method;
+    float d_snr_min;
+    std::vector<gr_complex> d_bug;
 
     // fft tools
     void fft_setup(int power);
@@ -52,6 +54,10 @@ private:
     float rms_bw(std::vector<float> mags2,
                  std::vector<float> freq_axis,
                  float center_frequency);
+    float middle_out(std::vector<float> mags2,
+                     std::vector<float> freq_axis,
+                     float noise_floor,
+                     float &bandwidth);
     float estimate_pwr(std::vector<float> mags2,
                        std::vector<float> freq_axis,
                        float center_frequency,
@@ -64,7 +70,7 @@ public:
      * @param method - estimate method #cf_method
      * @param channel_freqs - channel freq list for coerce method
      */
-    cf_estimate_impl(int method, std::vector<float> channel_freqs);
+    cf_estimate_impl(int method, std::vector<float> channel_freqs, float snr_min);
 
     /**
      * Deconstructor

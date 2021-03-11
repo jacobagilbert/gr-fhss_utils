@@ -29,7 +29,7 @@ class sigmf_meta_writer(gr.basic_block):
     """
     quick and dirty tool to convert detections to sigmf annotations
     """
-    def __init__(self, filename, freq, rate, dtype):
+    def __init__(self, filename, freq, rate, label, dtype):
         gr.basic_block.__init__(self,
             name="sigmf_meta_writer",
             in_sig=None,
@@ -37,13 +37,15 @@ class sigmf_meta_writer(gr.basic_block):
 
         self.d_filename = filename
         self.soo = 256
-        self.bw_min = rate/100.
-	
+        self.bw_min = rate/1000.0
+
+        self.label = label
+
         self.d_dict = {}
         self.d_dict['captures'] = [{'core:sample_start': 0, 'core:frequency': freq}]
         self.d_dict['global'] = {'core:datatype': dtype, 'core:sample_rate': rate, 'antenna:gain': 0}
         self.d_dict['annotations'] = []
-        
+
         self.message_port_register_in(pmt.intern("in"))
         self.set_msg_handler(pmt.intern("in"), self.handler)
 
@@ -56,7 +58,7 @@ class sigmf_meta_writer(gr.basic_block):
 
         f.write(json.dumps(self.d_dict,indent=4))
         f.close()
-        
+
         return True
 
     def handler(self, msg):
@@ -69,10 +71,14 @@ class sigmf_meta_writer(gr.basic_block):
         sob = pmt.to_uint64(pmt.dict_ref(meta, pmt.intern('start_offset'), pmt.PMT_NIL))
         eob = pmt.to_uint64(pmt.dict_ref(meta, pmt.intern('end_offset'), pmt.PMT_NIL))
         freq = pmt.to_double(pmt.dict_ref(meta, pmt.intern('center_frequency'), pmt.PMT_NIL))
-        try:
-          burst = 'burst'+str(pmt.to_uint64(pmt.dict_ref(meta, pmt.intern('burst_id'), pmt.PMT_NIL)))
-        except:
-          burst = ''
+
+        burst = self.label
+        if self.label is 'use_burst_id':
+            try:
+              burst = 'burst'+str(pmt.to_uint64(pmt.dict_ref(meta, pmt.intern('burst_id'), pmt.PMT_NIL)))
+            except:
+              burst = ''
+
         try:
           bw = pmt.to_double(pmt.dict_ref(meta, pmt.intern('symbol_rate'), pmt.PMT_NIL))
         except:
@@ -83,7 +89,8 @@ class sigmf_meta_writer(gr.basic_block):
             bw = self.bw_min
         except:
           pass
-        self.d_dict['annotations'].append({'core:sample_start': sob-self.soo, 'core:sample_count': eob-sob, 'core:freq_upper_edge': int(freq+bw/2), 'core:freq_lower_edge': int(freq-bw/2), 'core:description': burst})
+        self.d_dict['annotations'].append({'core:sample_start': sob-self.soo,
+                    'core:sample_count': eob-sob, 'core:freq_upper_edge': int(freq+bw/2),
+                    'core:freq_lower_edge': int(freq-bw/2), 'core:description': burst})
       except Exception as e:
         print('could not form annotation from message', pmt.car(msg), ':',e)
-
