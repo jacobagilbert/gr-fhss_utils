@@ -255,7 +255,7 @@ blocks:
     bus_structure: null
     coordinate: [1600, 1264.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: blocks_message_debug_0_1_0
   id: blocks_message_debug
   parameters:
@@ -295,7 +295,7 @@ blocks:
     comment: ''
     const: 'pow(2,-15) '
     maxoutbuf: '0'
-    minoutbuf: '1024000'
+    minoutbuf: '0'
     type: complex
     vlen: '1'
   states:
@@ -505,13 +505,13 @@ blocks:
     dtype: ci16_le
     filename: /data/latest.sigmf-meta
     freq: int(center_freq)
-    label: '''radio1'''
+    label: sigmf_label
     rate: int(samp_rate)
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1336, 1004.0]
+    coordinate: [744, 796.0]
     rotation: 180
     state: true
 - name: fhss_utils_tagged_burst_to_pdu_0
@@ -1689,6 +1689,23 @@ blocks:
     coordinate: [824, 1740.0]
     rotation: 0
     state: disabled
+- name: sigmf_label
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: part
+    label: SigMF Label
+    short_id: l
+    type: str
+    value: '''radio1'''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [984, 228.0]
+    rotation: 0
+    state: enabled
 - name: threshold
   id: parameter
   parameters:
@@ -2182,6 +2199,7 @@ connections:
 - [blocks_probe_rate_0, rate, blocks_message_debug_0_1_0, print]
 - [blocks_throttle_0, '0', blocks_add_xx_0, '0']
 - [fhss_utils_cf_estimate_0, debug, qtgui_time_sink_x_0_0_0_0_0_1, in]
+- [fhss_utils_cf_estimate_0, out, fhss_utils_sigmf_meta_writer_0, in]
 - [fhss_utils_cf_estimate_0, out, pdu_utils_pdu_fir_filter_1, pdu_in]
 - [fhss_utils_fft_burst_tagger_0, '0', fhss_utils_tagged_burst_to_pdu_0, '0']
 - [fhss_utils_fft_burst_tagger_0, debug, qtgui_time_sink_x_0_0_0_0_0_0, in]
@@ -2192,7 +2210,6 @@ connections:
 - [pdu_utils_pdu_clock_recovery_0, pdu_out, pdu_utils_pdu_split_0_0, pdu_in]
 - [pdu_utils_pdu_clock_recovery_0, pdu_out, qtgui_time_sink_x_0_0_0_0_0_0_0_0, in]
 - [pdu_utils_pdu_clock_recovery_0_0, pdu_out, virtual_sink_0_0_0, '0']
-- [pdu_utils_pdu_fine_time_measure_0, pdu_out, fhss_utils_sigmf_meta_writer_0, in]
 - [pdu_utils_pdu_fine_time_measure_0, pdu_out, virtual_sink_0_0, '0']
 - [pdu_utils_pdu_fir_filter_1, pdu_out, pdu_utils_pdu_fine_time_measure_0, pdu_in]
 - [pdu_utils_pdu_head_tail_0, head, qtgui_time_raster_sink_x_0, in]

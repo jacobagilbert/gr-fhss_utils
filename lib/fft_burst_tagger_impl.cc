@@ -164,17 +164,17 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_freq,
     }
 
     d_baseline_sum_f =
-        (float*)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
+        (float *)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
     d_magnitude_shifted_f =
-        (float*)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
+        (float *)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
     d_fine_magnitude_shifted_f =
-        (float*)volk_malloc(sizeof(float) * d_fine_fft_size, volk_get_alignment());
+        (float *)volk_malloc(sizeof(float) * d_fine_fft_size, volk_get_alignment());
     d_relative_magnitude_f =
-        (float*)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
+        (float *)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
     d_burst_mask_i =
-        (uint32_t*)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
-    d_burst_mask_i1 =
-        (uint32_t*)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
+        (uint32_t *)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
+    d_burst_mask_j =
+        (uint32_t *)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
 
     d_bin_width_db = 10 * log10(d_sample_rate / d_fft_size);
     d_rel_mag_hist = 1;
@@ -189,7 +189,7 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_freq,
     extra = 0;
 
     memset(d_burst_mask_i, ~0, sizeof(uint32_t) * d_fft_size);
-    memset(d_burst_mask_i1, ~0, sizeof(uint32_t) * d_fft_size);
+    memset(d_burst_mask_j, ~0, sizeof(uint32_t) * d_fft_size);
 
     d_threshold = pow(10, threshold / 10);
 
@@ -248,7 +248,7 @@ fft_burst_tagger_impl::~fft_burst_tagger_impl()
     volk_free(d_fine_window_f);
     volk_free(d_fine_magnitude_shifted_f);
     volk_free(d_burst_mask_i);
-    volk_free(d_burst_mask_i1);
+    volk_free(d_burst_mask_j);
     if (d_burst_debug_file) {
         fclose(d_burst_debug_file);
     }
@@ -315,11 +315,19 @@ void fft_burst_tagger_impl::update_circular_buffer(void)
             d_history_primed = true;
         }
     } else if ((d_abs_fft_index & 0x3) == 0) {
+        std::stringstream sss,ss1;
+        sss << "NBM:  [";
+        ss1 << "NBM1: [";
         for (size_t i = 0; i < d_fft_size; i++) {
-            if (d_burst_mask_i[i] != 0 && d_burst_mask_i1[i] != 0) {
+            if (d_burst_mask_i[i] != 0 && d_burst_mask_j[i] != 0) {
+            //if (d_burst_mask_i[i] != 0) {
                 d_baseline_sum_f[i] = d_bin_averages[i].add(d_magnitude_shifted_f[i]);
             }
+            sss << (int )(d_burst_mask_i[i] != 0);// << ",";
+            ss1 << (int )(d_burst_mask_j[i] != 0);// << ",";
         }
+        //std::cout << sss.str() << "]   " << std::cout << ss1.str() << "]" << std::endl;
+        memcpy(d_burst_mask_j, d_burst_mask_i, d_fft_size * sizeof(uint32_t));
     }
     // Copy the relative magnitude history into circular buffer
     memcpy(d_relative_history_f + d_rel_hist_index * d_fft_size,
@@ -372,7 +380,7 @@ void fft_burst_tagger_impl::_reset()
     d_history_primed = false;
     memset(d_baseline_sum_f, 0, sizeof(float) * d_fft_size);
     memset(d_burst_mask_i, ~0, sizeof(uint32_t) * d_fft_size);
-    memset(d_burst_mask_i1, ~0, sizeof(uint32_t) * d_fft_size);
+    memset(d_burst_mask_j, ~0, sizeof(uint32_t) * d_fft_size);
 }
 
 void fft_burst_tagger_impl::delete_gone_bursts(void)
@@ -475,8 +483,8 @@ void fft_burst_tagger_impl::create_new_potential_bursts(void)
 void fft_burst_tagger_impl::add_ownership(const pre_burst& b)
 {
     for (size_t i = b.start_bin; i <= b.stop_bin; i++) {
-        d_burst_mask_i1[i] = d_burst_mask_i[i];
         d_burst_mask_i[i] = 0;
+        d_burst_mask_j[i] = 0;
         if (d_mask_owners[i].push_back(b.id)) {
             GR_LOG_WARN(d_logger,
                         boost::format("Owners::push_back - Trying to add too many points "
@@ -496,7 +504,6 @@ void fft_burst_tagger_impl::update_ownership(const pre_burst& pb, const burst& b
         // There is a chance that we will have two pre-bursts that
         for (size_t i = pb.start_bin; i <= pb.stop_bin; i++) {
             if (d_mask_owners[i].size() == 1) {
-                d_burst_mask_i1[i] = d_burst_mask_i[i];
                 d_burst_mask_i[i] = ~0;
             }
             if (d_mask_owners[i].erase(pb.id)) {
@@ -508,8 +515,8 @@ void fft_burst_tagger_impl::update_ownership(const pre_burst& pb, const burst& b
             }
         }
         for (size_t i = b.start_bin; i <= b.stop_bin; i++) {
-            d_burst_mask_i1[i] = d_burst_mask_i[i];
             d_burst_mask_i[i] = 0;
+            d_burst_mask_j[i] = 0;
             if (d_mask_owners[i].push_back(b.id)) {
                 GR_LOG_WARN(d_logger,
                             boost::format("Owners::push_back - Trying to add too many "
@@ -536,7 +543,6 @@ void fft_burst_tagger_impl::remove_ownership(const pre_burst& b)
 {
     for (size_t i = b.start_bin; i <= b.stop_bin; i++) {
         if (d_mask_owners[i].size() == 1) {
-            d_burst_mask_i1[i] = d_burst_mask_i[i];
             d_burst_mask_i[i] = ~0;
         }
         if (d_mask_owners[i].erase(b.id)) {
@@ -552,7 +558,6 @@ void fft_burst_tagger_impl::remove_ownership(const burst& b)
 {
     for (size_t i = b.start_bin; i <= b.stop_bin; i++) {
         if (d_mask_owners[i].size() == 1) {
-            d_burst_mask_i1[i] = d_burst_mask_i[i];
             d_burst_mask_i[i] = ~0;
         }
         if (d_mask_owners[i].erase(b.id)) {

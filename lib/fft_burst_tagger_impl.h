@@ -274,7 +274,7 @@ private:
     float* d_relative_magnitude_f;
     float* d_relative_history_f;
     uint32_t* d_burst_mask_i;
-    uint32_t* d_burst_mask_i1; // 1 FFT buffer to prevent burst energy from impacting noise
+    uint32_t* d_burst_mask_j;  // 1 FFT buffer to prevent burst energy from impacting noise
     float* d_ones_f;
     float d_threshold;
     float d_threshold_low;

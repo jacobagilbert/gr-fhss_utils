@@ -73,7 +73,7 @@ class sigmf_meta_writer(gr.basic_block):
         freq = pmt.to_double(pmt.dict_ref(meta, pmt.intern('center_frequency'), pmt.PMT_NIL))
 
         burst = self.label
-        if self.label is 'use_burst_id':
+        if self.label == 'use_burst_id':
             try:
               burst = 'burst'+str(pmt.to_uint64(pmt.dict_ref(meta, pmt.intern('burst_id'), pmt.PMT_NIL)))
             except:
