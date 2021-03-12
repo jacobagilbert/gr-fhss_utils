@@ -162,7 +162,7 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_freq,
     for (auto ii=0; ii < d_fine_fft_size; ii++) {
         d_fine_window_f[ii] /= g*2;  // WHY: magic number so power/noise are correct
     }
-    
+
     d_baseline_sum_f =
         (float*)volk_malloc(sizeof(float) * d_fft_size, volk_get_alignment());
     d_magnitude_shifted_f =
@@ -194,12 +194,9 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_freq,
     d_threshold = pow(10, threshold / 10);
 
     if (d_debug) {
-        fprintf(stderr,
-                "threshold=%f, d_threshold=%f (%f/%d)\n",
-                threshold,
-                d_threshold,
-                d_threshold * d_history_size,
-                d_history_size);
+        GR_LOG_INFO(d_logger,
+                    boost::format("threshold=%f, d_threshold=%f (%f/%d)") % threshold %
+                        d_threshold % (d_threshold * d_history_size) % d_history_size);
     }
 
     d_peaks.resize(d_fft_size);
@@ -225,7 +222,7 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_freq,
     d_filter_bandwidth = 0;
 
     if (d_debug) {
-        fprintf(stderr, "d_max_bursts=%d\n", d_max_bursts);
+        GR_LOG_INFO(d_logger, boost::format("d_max_bursts=%d") % d_max_bursts);
     }
 
     if (d_debug) {
@@ -240,7 +237,7 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_freq,
  */
 fft_burst_tagger_impl::~fft_burst_tagger_impl()
 {
-    fprintf(stderr, "Tagged %" PRIu64 " bursts\n", d_n_tagged_bursts);
+    GR_LOG_INFO(d_logger, boost::format("Tagged %lu bursts") % d_n_tagged_bursts);
     delete d_fft;
     delete d_fine_fft;
     volk_free(d_window_f);
@@ -264,21 +261,25 @@ fft_burst_tagger_impl::~fft_burst_tagger_impl()
 bool fft_burst_tagger_impl::stop()
 {
 #ifdef DO_TIMER
-    printf("total time: %f\n", d_total_timer.elapsed());
-    printf("rel mag: %f\n", d_rel_mag_timer.elapsed());
-    printf("fft time: %f\n", d_fft_timer.elapsed());
-    printf("update pb time: %f\n", d_update_pb_timer.elapsed());
-    printf("update ab time: %f\n", d_update_ab_timer.elapsed());
-    printf("remove tb time: %f\n", d_remove_tb_timer.elapsed());
-    printf("extract time: %f\n", d_extract_timer.elapsed());
-    printf("delete time: %f\n", d_delete_timer.elapsed());
-    printf("new pb time: %f\n", d_new_pb_timer.elapsed());
-    printf("new burst time: %f\n", d_new_b_timer.elapsed());
-    printf("update cb time: %f\n", d_update_cb_timer.elapsed());
-    printf("other timer: %f\n", d_other.elapsed());
+    GR_LOG_INFO(d_logger, boost::format("total time: %f") % d_total_timer.elapsed());
+    GR_LOG_INFO(d_logger, boost::format("rel mag: %f") % d_rel_mag_timer.elapsed());
+    GR_LOG_INFO(d_logger, boost::format("fft time: %f") % d_fft_timer.elapsed());
+    GR_LOG_INFO(d_logger,
+                boost::format("update pb time: %f") % d_update_pb_timer.elapsed());
+    GR_LOG_INFO(d_logger,
+                boost::format("update ab time: %f") % d_update_ab_timer.elapsed());
+    GR_LOG_INFO(d_logger,
+                boost::format("remove tb time: %f") % d_remove_tb_timer.elapsed());
+    GR_LOG_INFO(d_logger, boost::format("extract time: %f") % d_extract_timer.elapsed());
+    GR_LOG_INFO(d_logger, boost::format("delete time: %f") % d_delete_timer.elapsed());
+    GR_LOG_INFO(d_logger, boost::format("new pb time: %f") % d_new_pb_timer.elapsed());
+    GR_LOG_INFO(d_logger, boost::format("new burst time: %f") % d_new_b_timer.elapsed());
+    GR_LOG_INFO(d_logger, boost::format("update cb: %f") % d_update_cb_timer.elapsed());
+    GR_LOG_INFO(d_logger, boost::format("other timer: %f") % d_other.elapsed());
 #endif
-    printf("saw %lu ffts\n", d_abs_fft_index);
-    printf("extra = %zu\n", extra);
+
+    GR_LOG_INFO(d_logger, boost::format("saw %lu ffts") % d_abs_fft_index);
+    GR_LOG_INFO(d_logger, boost::format("extra = %zu") % extra);
 
     return true;
 }
@@ -309,7 +310,6 @@ void fft_burst_tagger_impl::update_circular_buffer(void)
             d_baseline_sum_f[i] = d_bin_averages[i].add(d_magnitude_shifted_f[i]);
         }
         d_history_index++;
-        // printf("updated baseline %u\n", d_history_index);
 
         if (d_history_index == d_history_size) {
             d_history_primed = true;
@@ -350,7 +350,7 @@ void fft_burst_tagger_impl::reset()
 
 void fft_burst_tagger_impl::_reset()
 {
-    printf("=========== RESETTING BURST DETECTOR ===========\n");
+    GR_LOG_WARN(d_logger, "=========== RESETTING BURST DETECTOR ===========");
     // close and tag all current bursts
     // d_peaks.clear();
     d_current_peaks = 0;
@@ -477,7 +477,16 @@ void fft_burst_tagger_impl::add_ownership(const pre_burst& b)
     for (size_t i = b.start_bin; i <= b.stop_bin; i++) {
         d_burst_mask_i1[i] = d_burst_mask_i[i];
         d_burst_mask_i[i] = 0;
-        d_mask_owners[i].push_back(b.id);
+        if (d_mask_owners[i].push_back(b.id)) {
+            GR_LOG_WARN(d_logger,
+                        boost::format("Owners::push_back - Trying to add too many points "
+                                      "for  bin id=%zu, size=%zu, burst=%zu") %
+                            d_mask_owners[i].uid % d_mask_owners[i]._size % b.id);
+            GR_LOG_WARN(d_logger,
+                        boost::format("Owner bins are %zu, %zu, %zu %zu") %
+                            d_mask_owners[i].ids[0] % d_mask_owners[i].ids[1] %
+                            d_mask_owners[i].ids[2] % d_mask_owners[i].ids[3]);
+        }
     }
 }
 
@@ -490,16 +499,35 @@ void fft_burst_tagger_impl::update_ownership(const pre_burst& pb, const burst& b
                 d_burst_mask_i1[i] = d_burst_mask_i[i];
                 d_burst_mask_i[i] = ~0;
             }
-            d_mask_owners[i].erase(pb.id);
+            if (d_mask_owners[i].erase(pb.id)) {
+                GR_LOG_ERROR(
+                    d_logger,
+                    boost::format("Owners::Remove - Couldn't find id to erase. This "
+                                  "should never happen - bin id = %zu, burst=%zu") %
+                        d_mask_owners[i].uid % pb.id);
+            }
         }
         for (size_t i = b.start_bin; i <= b.stop_bin; i++) {
             d_burst_mask_i1[i] = d_burst_mask_i[i];
             d_burst_mask_i[i] = 0;
-            d_mask_owners[i].push_back(b.id);
+            if (d_mask_owners[i].push_back(b.id)) {
+                GR_LOG_WARN(d_logger,
+                            boost::format("Owners::push_back - Trying to add too many "
+                                          "points for  bin id=%zu, size=%zu, burst=%zu") %
+                                d_mask_owners[i].uid % d_mask_owners[i]._size % b.id);
+                GR_LOG_WARN(d_logger,
+                            boost::format("Owner bins are %zu, %zu, %zu %zu") %
+                                d_mask_owners[i].ids[0] % d_mask_owners[i].ids[1] %
+                                d_mask_owners[i].ids[2] % d_mask_owners[i].ids[3]);
+            }
         }
     } else {
         for (size_t i = b.start_bin; i <= b.stop_bin; i++) {
-            d_mask_owners[i].update(pb.id, b.id);
+            if (d_mask_owners[i].update(pb.id, b.id)) {
+                GR_LOG_ERROR(d_logger,
+                             "Owners::Update - Couldn't find id to update. This should "
+                             "never happen");
+            }
         }
     }
 }
@@ -511,7 +539,12 @@ void fft_burst_tagger_impl::remove_ownership(const pre_burst& b)
             d_burst_mask_i1[i] = d_burst_mask_i[i];
             d_burst_mask_i[i] = ~0;
         }
-        d_mask_owners[i].erase(b.id);
+        if (d_mask_owners[i].erase(b.id)) {
+            GR_LOG_ERROR(d_logger,
+                         boost::format("Owners::Remove - Couldn't find id to erase. This "
+                                       "should never happen - bin id = %zu, burst=%zu") %
+                             d_mask_owners[i].uid % b.id);
+        }
     }
 }
 
@@ -522,7 +555,12 @@ void fft_burst_tagger_impl::remove_ownership(const burst& b)
             d_burst_mask_i1[i] = d_burst_mask_i[i];
             d_burst_mask_i[i] = ~0;
         }
-        d_mask_owners[i].erase(b.id);
+        if (d_mask_owners[i].erase(b.id)) {
+            GR_LOG_ERROR(d_logger,
+                         boost::format("Owners::Remove - Couldn't find id to erase. This "
+                                       "should never happen - bin id = %zu, burst=%zu") %
+                             d_mask_owners[i].uid % b.id);
+        }
     }
 }
 

@@ -23,6 +23,7 @@ namespace fhss_utils {
 const int MAX_FFT_POWER = 8;    // largest FFT this block will use
 const int MIN_FFT_POWER = 5;    // smallest FFT this block will use
 const int MIN_NFFTS = 4;        // minimum number of FFTs this block will average
+const int MIN_BURST_SIZE = pow(2, MIN_FFT_POWER) * MIN_NFFTS;
 // PDUs should be large enough to take MIN_NFFTS of size pow(2,MIN_FFT_POWER)
 
 
@@ -184,8 +185,10 @@ void cf_estimate_impl::pdu_handler(pmt::pmt_t pdu)
     size_t burst_size;
     const gr_complex* data = pmt::c32vector_elements(pdu_data, burst_size);
 
-    if (burst_size < pow(2, MIN_FFT_POWER) * MIN_NFFTS) {
-        std::cout << "\t******\tWHAT IS THIS? A BURST FOR ANTS??\n";
+    if (burst_size < MIN_BURST_SIZE) {
+        GR_LOG_INFO(d_logger,
+                    boost::format("Burst of length %d too small (min = %d), dropping.") %
+                        burst_size % MIN_BURST_SIZE);
     }
 
     //////////////////////////////////

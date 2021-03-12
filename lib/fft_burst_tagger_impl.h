@@ -100,14 +100,17 @@ public:
     }
 
     /**
-     * Print the contents of the a given moving average buffer in a user friendly way.
+     * Print the contents of the a given moving average buffer in a python-friendly
+     * way. This is a debug function only that is not normally used
      */
-    void print()
+    std::stringstream print(void)
     {
-        std::cout << "[";
-        for (auto ii = 0; ii < N - 1; ii++)
-            std::cout << hist[ii] << ", ";
-        std::cout << hist[N - 1] << "]";
+        std::stringstream sout;
+        sout << "[" << hist[0];
+        for (auto ii = 1; ii < N; ii++)
+            sout << ", " << hist[ii];
+        sout << "]";
+        return sout;
     }
 
 private:
@@ -165,22 +168,21 @@ struct owners {
         _size = 0;
     }
 
-    void push_back(uint64_t id)
+    /* return of zero is success, otherwise error */
+    int push_back(uint64_t id)
     {
         if (_size > 3) {
-            printf("Owners::push_back - Trying to add too many points for  bin id=%zu, "
-                   "size=%zu, burst=%zu\n",
-                   uid,
-                   _size,
-                   id);
-            printf("Owner bins are %zu, %zu, %zu %zu\n", ids[0], ids[1], ids[2], ids[3]);
-            return;
+            return 1;
+            // printf("Owners::push_back - Trying to add too many points for  bin id=%zu,
+            // size=%zu, burst=%zu\n", uid, _size, id); printf("Owner bins are %zu, %zu,
+            // %zu %zu\n", ids[0], ids[1], ids[2], ids[3]);
         }
         ids[_size] = id;
         _size++;
+        return 0;
     }
 
-    void update(uint64_t oldID, uint64_t newID)
+    int update(uint64_t oldID, uint64_t newID)
     {
         if (ids[0] == oldID)
             ids[0] = newID;
@@ -190,13 +192,14 @@ struct owners {
             ids[2] = newID;
         else if (ids[3] == oldID)
             ids[3] = newID;
-        else {
-            printf("Owners::Update - Couldn't find id to update. This should never "
-                   "happen\n");
-        }
+        else
+            return 1;
+        // printf("Owners::Update - Couldn't find id to update. This should never
+        // happen\n");
+        return 0;
     }
 
-    void erase(uint64_t id)
+    int erase(uint64_t id)
     {
         _size--;
         if (ids[0] == id) {
@@ -220,13 +223,12 @@ struct owners {
         } else if (ids[3] == id) {
             ids[3] = (uint64_t)-1;
         } else {
-            // Increment size because we didn't remove anything.
-            _size++;
-            printf("Owners::Remove - Couldn't find id to erase. This should never happen "
-                   "- bin id = %zu, burst=%zu\n",
-                   uid,
-                   id);
+            _size++; // Increment size because we didn't remove anything.
+            return 1;
+            // printf("Owners::Remove - Couldn't find id to erase. This should never
+            // happen - bin id = %zu, burst=%zu\n", uid, id);
         }
+        return 0;
     }
 };
 
