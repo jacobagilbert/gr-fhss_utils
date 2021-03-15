@@ -215,9 +215,10 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_freq,
     for (size_t i = 0; i < d_fft_size; i++)
         d_mask_owners[i].uid = i;
 
-    // Area to ignore around an already found signal in FFT bins
-    // Internal representation is in FFT bins
-    d_burst_width = burst_width / (sample_rate / fft_size);
+    // Area to ignore around an already found signal in FFT bins, rounded up to multiple
+    // of two, which also helps compensate for the window width
+    d_burst_width = 2 * std::ceil(1.0 * burst_width / (2.0 * sample_rate / fft_size));
+    GR_LOG_INFO(d_logger, boost::format("bursts width is +/- %d FFT bins") % (d_burst_width / 2));
 
     d_filter_bandwidth = 0;
 
