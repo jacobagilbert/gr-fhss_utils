@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(fft_burst_tagger.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(43be6387e391e5a81b9bc3a299361468)                     */
+/* BINDTOOL_HEADER_FILE_HASH(d963d92e73fbbc82e51c2a498d58457b)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -34,14 +34,13 @@ void bind_fft_burst_tagger(py::module& m)
 
 
     py::class_<fft_burst_tagger,
-               gr::sync_block,
                gr::block,
                gr::basic_block,
                std::shared_ptr<fft_burst_tagger>>(
         m, "fft_burst_tagger", D(fft_burst_tagger))
 
         .def(py::init(&fft_burst_tagger::make),
-             py::arg("center_frequency"),
+             py::arg("center_freq"),
              py::arg("fft_size"),
              py::arg("sample_rate"),
              py::arg("burst_pre_len"),

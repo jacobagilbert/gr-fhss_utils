@@ -13,8 +13,8 @@
 /* If manual edits are made, the following tags should be modified accordingly.    */
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
-/* BINDTOOL_HEADER_FILE(constants.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(cf9e1cb4e041d3eaed066b6769751220)                     */
+/* BINDTOOL_HEADER_FILE(constants.h)                                               */
+/* BINDTOOL_HEADER_FILE_HASH(178a40d37fb19394edaf53d1514373d0)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -130,4 +130,9 @@ void bind_constants(py::module& m)
     m.def("PMTCONSTSTR__end_offset",
           &::gr::fhss_utils::PMTCONSTSTR__end_offset,
           D(PMTCONSTSTR__end_offset));
+
+
+    m.def("PMTCONSTSTR__cut_short",
+          &::gr::fhss_utils::PMTCONSTSTR__cut_short,
+          D(PMTCONSTSTR__cut_short));
 }

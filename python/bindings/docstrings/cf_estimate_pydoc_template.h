@@ -18,10 +18,7 @@
 static const char* __doc_gr_fhss_utils_cf_estimate = R"doc()doc";
 
 
-static const char* __doc_gr_fhss_utils_cf_estimate_cf_estimate_0 = R"doc()doc";
-
-
-static const char* __doc_gr_fhss_utils_cf_estimate_cf_estimate_1 = R"doc()doc";
+static const char* __doc_gr_fhss_utils_cf_estimate_cf_estimate = R"doc()doc";
 
 
 static const char* __doc_gr_fhss_utils_cf_estimate_make = R"doc()doc";

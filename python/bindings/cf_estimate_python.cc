@@ -13,8 +13,8 @@
 /* If manual edits are made, the following tags should be modified accordingly.    */
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
-/* BINDTOOL_HEADER_FILE(cf_estimate.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(e9158cb2c52ba5ebb0b1d8ea8db57469)                     */
+/* BINDTOOL_HEADER_FILE(cf_estimate.h)                                             */
+/* BINDTOOL_HEADER_FILE_HASH(7ce0325ad45496a7794408f66e664d6e)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -39,6 +39,7 @@ void bind_cf_estimate(py::module& m)
         .def(py::init(&cf_estimate::make),
              py::arg("method") = 0,
              py::arg("channel_freqs") = std::vector<float>(),
+             py::arg("snr_min") = 10,
              D(cf_estimate, make))
 
 
@@ -58,7 +59,8 @@ void bind_cf_estimate(py::module& m)
     py::enum_<::gr::fhss_utils::cf_method>(m, "cf_method")
         .value("RMS", ::gr::fhss_utils::RMS)               // 0
         .value("HALF_POWER", ::gr::fhss_utils::HALF_POWER) // 1
-        .value("COERCE", ::gr::fhss_utils::COERCE)         // 2
+        .value("MIDDLE_OUT", ::gr::fhss_utils::MIDDLE_OUT) // 2
+        .value("COERCE", ::gr::fhss_utils::COERCE)         // 3
         .export_values();
 
     py::implicitly_convertible<int, ::gr::fhss_utils::cf_method>();

@@ -18,10 +18,7 @@
 static const char* __doc_gr_fhss_utils_fft_burst_tagger = R"doc()doc";
 
 
-static const char* __doc_gr_fhss_utils_fft_burst_tagger_fft_burst_tagger_0 = R"doc()doc";
-
-
-static const char* __doc_gr_fhss_utils_fft_burst_tagger_fft_burst_tagger_1 = R"doc()doc";
+static const char* __doc_gr_fhss_utils_fft_burst_tagger_fft_burst_tagger = R"doc()doc";
 
 
 static const char* __doc_gr_fhss_utils_fft_burst_tagger_make = R"doc()doc";
