@@ -97,7 +97,6 @@ private:
      * \param freq_axis Frequency of each bin in the mags2 vector
      * \param center_frequency Center Frequency of input data
      * \param bandwidth Bandwidth of signal
-     * \param fft_mag2_gain gain of FFT and windowing process
      */
    float estimate_pwr(const std::vector<float> &mags2,
                       const std::vector<float> &freq_axis,

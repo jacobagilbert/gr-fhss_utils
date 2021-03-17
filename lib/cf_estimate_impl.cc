@@ -76,41 +76,22 @@ void cf_estimate_impl::fft_setup(int power)
         int fftsize = pow(2, i);
         d_ffts.push_back(new gr::fft::fft_complex_fwd(fftsize, 1));
 
-        /*
-         * initialize windows and calculate window gain, which in this case specifically
-         * refers to the non-coherent gain which is the rms value of the window weights:
-         *
-         *   G_{nc} = \sqrt{\frac{\Sigma w[n]^2}{N}}
-         *
-         * FIXME GR3.9: use the new GAUSSIAN/TUKEY built in fft::window kernels to
-         * generate the window
-         */
-        bool USE_GAUSSIAN_WINDOW(true);
-
+        /* initialize normalized FFT windows and pre-compensate for FFT size */
         d_windows.push_back(
             (float*)volk_malloc(sizeof(float) * fftsize, volk_get_alignment()));
 
-        double g = 0;
-        // this gaussian window is narrow to create a well localized spectral peak
-        if (USE_GAUSSIAN_WINDOW) {
-            float sigma = fftsize * 1.0 / 32.0;
-            std::vector<float> window = fft::window::gaussian(fftsize, sigma);
-            for (int j = 0; j < fftsize; j++) {
-                d_windows[i][j] = window[j];
-                g += (d_windows[i][j] * d_windows[i][j]);
-            }
-        } else {
-            std::vector<float> window =
-                fft::window::build(fft::window::WIN_BLACKMAN, fftsize, 0);
-            for (auto j = 0; j < fftsize; j++) {
-                d_windows[i][j] = window[j];
-                g += (d_windows[i][j] * d_windows[i][j]);
-            }
+        // this gaussian window is narrow and produces a well defined spectral peak
+        float sigma = fftsize * 1.0 / 32.0;
+        std::vector<float> window = fft::window::gaussian(fftsize, sigma);
+        //std::vector<float> window = fft::window::blackman(fftsize);
+        for (int j = 0; j < fftsize; j++) {
+            d_windows[i][j] = window[j] / fftsize;
         }
         // scale the window to compensate for FFT size and window rms gain:
-        //   gain_rms^2 * fftsize = sqrt(win_gain / fftsize)^2 * fftsize = win_gain
-        for (auto j = 0; j < fftsize; j++) {
-            d_windows[i][j] /= g*4;     // FIXME: magic number so power/noise are correct
+        double pwr_acc = 0.0;
+        for (auto x: window) pwr_acc += x*x/fftsize;
+        for (auto j=0; j < fftsize; j++) {
+            d_windows[i][j] = window[j] / (std::sqrt(pwr_acc) * fftsize);
         }
     }
 }

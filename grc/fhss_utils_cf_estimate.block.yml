@@ -21,6 +21,7 @@ parameters:
     dtype: float
     default: 10.0
     hide: part
+    hide: ${ ('none' if (method == "fhss_utils.MIDDLE_OUT") else 'all') }
 
 inputs:
 -   domain: message
