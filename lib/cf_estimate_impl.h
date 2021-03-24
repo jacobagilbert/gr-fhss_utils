@@ -40,68 +40,93 @@ private:
     blocks::rotator d_rotate;
     std::vector<gr_complex> d_corrected_burst;
 
-    // frequency list coercion
-    std::vector<float> d_channel_freqs;
-    float coerce_frequency(float center_frequency, float sample_rate);
-
-
+    /**
+     * \brief Coerce estimated center frequency to the closest Channel Freq list entry
+     *
+     * \param center_frequency Center frequency of input PDU data
+     * \param sample_rate Sample Rate of PDU data
+     * \param shift Reference to center frequency shift factor (output)
+     *
+     * returns a boool indicating if the burst SNR was below configured minimum
+     */
+     bool coerce_frequency(float center_frequency, float sample_rate, float &shift);
+     std::vector<float> d_channel_freqs;
 
     /**
      * \brief Return center frequency estimate using the RMS method
      *
-     * \param mags2 Vector of magnitude^2 FFT of input data
+     * \param mags2 Vector of magnitude^2 FFT of input PDU data
      * \param freq_axis Frequency of each bin in the mags2 vector
      * \param center_frequency Center Frequency of input data
      * \param sample_rate Sample Rate of input data
+     * \param shift Reference to center frequency shift factor (output)
+     *
+     * returns a boool indicating if the burst SNR was below configured minimum
      */
-    float rms_cf(const std::vector<float> &mags2,
+    bool rms_cf(const std::vector<float> &mags2,
                  const std::vector<float> &freq_axis,
                  float center_frequency,
-                 float sample_rate);
+                 float sample_rate,
+                 float &shift);
 
     /*!
      * \brief Return center frequency estimate using the Half Power method
      *
-     * \param mags2 Vector of magnitude^2 FFT of input data
+     * \param mags2 Vector of magnitude^2 FFT of input PDU data
+     * \param shift Reference to center frequency shift factor (output)
+     *
+     * returns a boool indicating if the burst SNR was below configured minimum
      */
-    float half_power_cf(const std::vector<float> &mags2);
+    bool half_power_cf(const std::vector<float> &mags2, float &shift);
 
     /*!
      * \brief Return bandwidth estimate using the RMS method
      *
-     * \param mags2 Vector of magnitude^2 FFT of input data
+     * \param mags2 Vector of magnitude^2 FFT of input PDU data
      * \param freq_axis Frequency of each bin in the mags2 vector
-     * \param center_frequency Center Frequency of input data
+     * \param center_frequency Center Frequency of input PDU data
+     * \param bandwidth Reference to bandwidth estimate (output)
+     *
+     * returns a boool indicating if the burst SNR was below configured minimum
      */
-    float rms_bw(const std::vector<float> &mags2,
+    bool rms_bw(const std::vector<float> &mags2,
                  const std::vector<float> &freq_axis,
-                 float center_frequency);
+                 float center_frequency,
+                 float &bandwidth);
 
     /*!
      * \brief Estimate bandwidth and center frequency using the Middle Out method
      *
-     * \param mags2 Vector of magnitude^2 FFT of input data
+     * \param mags2 Vector of magnitude^2 FFT of input PDU data
      * \param bin_resolution Span of each FFT bin for scaling bandwidth estimate
      * \param noise_floor Estimate of the noise floor in dB
-     * \param bandwidth Reference to bandwidth estimate
+     * \param bandwidth Reference to bandwidth estimate (output)
+     * \param shift Reference to center frequency shift factor (output)
+     *
+     * returns a boool indicating if the burst SNR was below configured minimum
      */
-    float middle_out(const std::vector<float> &mags2,
+    bool middle_out(const std::vector<float> &mags2,
                      float bin_resolution,
                      float noise_floor,
-                     float &bandwidth);
+                     float &bandwidth,
+                     float &shift);
 
     /*!
      * \brief Return estimated power in a burst
      *
-     * \param mags2 Vector of magnitude^2 FFT of input data
+     * \param mags2 Vector of magnitude^2 FFT of input PDU data
      * \param freq_axis Frequency of each bin in the mags2 vector
-     * \param center_frequency Center Frequency of input data
+     * \param center_frequency Center Frequency of input PDU data
      * \param bandwidth Bandwidth of signal
+     * \param shift Reference to the power of the signal (output)
+     *
+     * returns a boool indicating if the burst SNR was below configured minimum
      */
-   float estimate_pwr(const std::vector<float> &mags2,
+   bool estimate_pwr(const std::vector<float> &mags2,
                       const std::vector<float> &freq_axis,
                       float center_frequency,
-                      float bandwidth);
+                      float bandwidth,
+                      float &power);
 
 
 public:
