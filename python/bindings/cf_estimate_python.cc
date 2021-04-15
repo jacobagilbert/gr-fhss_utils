@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(cf_estimate.h)                                             */
-/* BINDTOOL_HEADER_FILE_HASH(7ce0325ad45496a7794408f66e664d6e)                     */
+/* BINDTOOL_HEADER_FILE_HASH(e4c76241ebae89bcf364b3f426c297e5)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -39,7 +39,6 @@ void bind_cf_estimate(py::module& m)
         .def(py::init(&cf_estimate::make),
              py::arg("method") = 0,
              py::arg("channel_freqs") = std::vector<float>(),
-             py::arg("snr_min") = 10,
              D(cf_estimate, make))
 
 
@@ -53,6 +52,18 @@ void bind_cf_estimate(py::module& m)
              &cf_estimate::set_method,
              py::arg("method"),
              D(cf_estimate, set_method))
+
+
+        .def("set_snr_min",
+             &cf_estimate::set_snr_min,
+             py::arg("snr_min"),
+             D(cf_estimate, set_snr_min))
+
+
+        .def("set_thresh_min",
+             &cf_estimate::set_thresh_min,
+             py::arg("thresh_min"),
+             D(cf_estimate, set_thresh_min))
 
         ;
 

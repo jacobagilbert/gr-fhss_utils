@@ -27,6 +27,7 @@ private:
     // this block supports a few different estimation methods
     int d_method;
     float d_snr_min;
+    float d_thresh_min;
     std::vector<gr_complex> d_bug;
 
     // fft tools
@@ -118,7 +119,7 @@ private:
      * \param freq_axis Frequency of each bin in the mags2 vector
      * \param center_frequency Center Frequency of input PDU data
      * \param bandwidth Bandwidth of signal
-     * \param shift Reference to the power of the signal (output)
+     * \param power Reference to the power of the signal (output)
      *
      * returns a boool indicating if the burst SNR was below configured minimum
      */
@@ -130,7 +131,7 @@ private:
 
 
 public:
-    cf_estimate_impl(int method, std::vector<float> channel_freqs, float snr_min);
+    cf_estimate_impl(int method, std::vector<float> channel_freqs);
 
     ~cf_estimate_impl() override;
 
@@ -139,6 +140,8 @@ public:
         d_channel_freqs = channel_freqs;
     };
     void set_method(int method) override { d_method = method; };
+    void set_snr_min(float snr) override { d_snr_min = snr; };
+    void set_thresh_min(float thresh) override { d_thresh_min = thresh; };
 };
 
 } // namespace fhss_utils

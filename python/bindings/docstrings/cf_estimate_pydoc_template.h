@@ -28,3 +28,9 @@ static const char* __doc_gr_fhss_utils_cf_estimate_set_freqs = R"doc()doc";
 
 
 static const char* __doc_gr_fhss_utils_cf_estimate_set_method = R"doc()doc";
+
+
+static const char* __doc_gr_fhss_utils_cf_estimate_set_snr_min = R"doc()doc";
+
+
+static const char* __doc_gr_fhss_utils_cf_estimate_set_thresh_min = R"doc()doc";
