@@ -4,9 +4,9 @@ options:
     catch_exceptions: 'True'
     category: '[GRC Hier Blocks]'
     cmake_opt: ''
-    comment: '|-------------------- QT WIDGETS ------------------|'
+    comment: ''
     copyright: NTESS, LLC
-    description: Reference Application
+    description: FHSS Utilities Reference Application
     gen_cmake: 'On'
     gen_linking: dynamic
     generate_options: qt_gui
@@ -32,50 +32,149 @@ options:
     state: enabled
 
 blocks:
+- name: dec_att
+  id: variable
+  parameters:
+    comment: ''
+    value: '40'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [616, 932.0]
+    rotation: 0
+    state: true
+- name: dec_fc
+  id: variable
+  parameters:
+    comment: ''
+    value: samp_rate / (decimation / 2.0)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [408, 932.0]
+    rotation: 0
+    state: true
+- name: dec_fs
+  id: variable
+  parameters:
+    comment: ''
+    value: samp_rate
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [312, 932.0]
+    rotation: 0
+    state: true
+- name: dec_twidth
+  id: variable
+  parameters:
+    comment: ''
+    value: samp_rate / (decimation/2.0) * 0.1
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [520, 932.0]
+    rotation: 0
+    state: true
 - name: decim_taps
   id: variable
   parameters:
     comment: ''
-    value: firdes.low_pass_2(1, 1, output_cutoff/decimation*2, output_trans_width/decimation*2,
-      output_attenuation)
+    value: firdes.low_pass_2(1, dec_fs, dec_fc - dec_twidth / 2.0, dec_twidth, dec_att)
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [472, 860.0]
+    coordinate: [464, 1268.0]
     rotation: 0
     state: enabled
+- name: fir_att
+  id: variable
+  parameters:
+    comment: ''
+    value: '40'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [616, 996.0]
+    rotation: 0
+    state: true
+- name: fir_fc
+  id: variable
+  parameters:
+    comment: ''
+    value: '0.25'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [408, 996.0]
+    rotation: 0
+    state: true
+- name: fir_fs
+  id: variable
+  parameters:
+    comment: '|----------------------TAGGED BURST to PDU and PDU FIR FILTER CONFIG
+      -----------------------|'
+    value: samp_rate / (decimation/2.0)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [312, 996.0]
+    rotation: 0
+    state: true
 - name: fir_taps
   id: variable
   parameters:
     comment: ''
-    value: firdes.low_pass_2(1, 1, 0.5*output_cutoff, 0.5*output_trans_width, output_attenuation)
+    value: firdes.low_pass_2(1, 1, fir_fc - fir_twidth/2.0, fir_twidth, fir_att)
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1064, 892.0]
+    coordinate: [1056, 1236.0]
     rotation: 0
     state: enabled
-- name: gain
-  id: variable_qtgui_range
+- name: fir_twidth
+  id: variable
   parameters:
     comment: ''
-    gui_hint: 5,0,1,1
-    label: Gain
-    min_len: '200'
-    orient: QtCore.Qt.Horizontal
-    rangeType: float
-    start: '0'
-    step: '1'
-    stop: '70'
-    value: '0'
-    widget: counter_slider
+    value: '0.025'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [24, 172.0]
+    coordinate: [520, 996.0]
+    rotation: 0
+    state: true
+- name: len_dt
+  id: variable
+  parameters:
+    comment: ''
+    value: len(decim_taps)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [696, 932.0]
+    rotation: 0
+    state: enabled
+- name: len_ft
+  id: variable
+  parameters:
+    comment: ''
+    value: len(fir_taps)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [696, 996.0]
     rotation: 0
     state: enabled
 - name: raster_size
@@ -87,7 +186,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1320, 1828.0]
+    coordinate: [1256, 2116.0]
     rotation: 0
     state: true
 - name: syncwords
@@ -99,7 +198,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [376, 1796.0]
+    coordinate: [376, 2044.0]
     rotation: 0
     state: enabled
 - name: tf
@@ -120,7 +219,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [136, 172.0]
+    coordinate: [24, 164.0]
     rotation: 0
     state: enabled
 - name: analog_fastnoise_source_x_0
@@ -140,7 +239,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [304, 652.0]
+    coordinate: [376, 692.0]
     rotation: 0
     state: true
 - name: blocks_add_xx_0
@@ -158,7 +257,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [576, 648.0]
+    coordinate: [648, 648.0]
     rotation: 0
     state: true
 - name: blocks_file_source_0_0
@@ -168,7 +267,7 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: /tmp/data.sigmf-data
+    file: infile
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -180,9 +279,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [32, 556.0]
+    coordinate: [24, 604.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_file_source_0_0_0
   id: blocks_file_source
   parameters:
@@ -190,7 +289,7 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: /tmp/data.sigmf-data
+    file: infile
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -202,7 +301,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [32, 428.0]
+    coordinate: [24, 452.0]
     rotation: 0
     state: enabled
 - name: blocks_head_0
@@ -220,7 +319,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [576, 460.0]
+    coordinate: [648, 500.0]
     rotation: 0
     state: bypassed
 - name: blocks_interleaved_short_to_complex_0_1
@@ -238,9 +337,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [296, 580.0]
+    coordinate: [216, 628.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_message_debug_0_1
   id: blocks_message_debug
   parameters:
@@ -252,7 +351,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1584, 1248.0]
+    coordinate: [1592, 1496.0]
     rotation: 0
     state: disabled
 - name: blocks_message_debug_0_1_0
@@ -266,7 +365,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1584, 488.0]
+    coordinate: [1576, 528.0]
     rotation: 0
     state: disabled
 - name: blocks_multiply_const_vxx_0_1
@@ -274,8 +373,8 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    comment: 'QT Widget: GAIN'
-    const: pow(2,(gain/10))
+    comment: ''
+    const: '1'
     maxoutbuf: '0'
     minoutbuf: '0'
     type: complex
@@ -284,7 +383,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [696, 660.0]
+    coordinate: [872, 612.0]
     rotation: 0
     state: enabled
 - name: blocks_multiply_const_vxx_0_1_0
@@ -302,9 +401,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [304, 532.0]
+    coordinate: [216, 580.0]
     rotation: 180
-    state: disabled
+    state: enabled
 - name: blocks_probe_rate_0
   id: blocks_probe_rate
   parameters:
@@ -325,15 +424,38 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1304, 476.0]
+    coordinate: [1304, 516.0]
     rotation: 0
     state: enabled
+- name: blocks_selector_0
+  id: blocks_selector
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    enabled: 'True'
+    input_index: 1 if short_in else 0
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_inputs: '2'
+    num_outputs: '1'
+    output_index: '0'
+    showports: 'True'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [216, 468.0]
+    rotation: 0
+    state: true
 - name: blocks_skiphead_0
   id: blocks_skiphead
   parameters:
     affinity: ''
     alias: ''
-    comment: Skip Head and Head are for running partial files, disable otherwise
+    comment: Skip Head / Head for partial file processing, disable otherwise
     maxoutbuf: '0'
     minoutbuf: '0'
     num_items: '1024'
@@ -343,7 +465,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [296, 460.0]
+    coordinate: [440, 500.0]
     rotation: 0
     state: bypassed
 - name: blocks_throttle_0
@@ -362,7 +484,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [576, 556.0]
+    coordinate: [648, 572.0]
     rotation: 180
     state: enabled
 - name: burst_width
@@ -371,7 +493,7 @@ blocks:
     alias: ''
     comment: ''
     hide: part
-    label: Burst Width [Hz]
+    label: Burst Width
     short_id: W
     type: intx
     value: int(1e6)
@@ -379,7 +501,41 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [680, 212.0]
+    coordinate: [704, 20.0]
+    rotation: 0
+    state: enabled
+- name: bw_max
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: part
+    label: Max Valid Bandwidth
+    short_id: B
+    type: eng_float
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1224, 132.0]
+    rotation: 0
+    state: enabled
+- name: bw_min
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: part
+    label: Min Valid Bandwidth
+    short_id: b
+    type: eng_float
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1064, 132.0]
     rotation: 0
     state: enabled
 - name: center_freq
@@ -388,7 +544,7 @@ blocks:
     alias: ''
     comment: ''
     hide: none
-    label: Center Frequency
+    label: Frequency
     short_id: f
     type: eng_float
     value: 915e6
@@ -396,7 +552,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [680, 92.0]
+    coordinate: [408, 20.0]
     rotation: 0
     state: enabled
 - name: cfe_snr
@@ -405,7 +561,7 @@ blocks:
     alias: ''
     comment: ''
     hide: none
-    label: CF Est. SNR
+    label: Center Frequency Estimator SNR
     short_id: c
     type: eng_float
     value: '4'
@@ -413,58 +569,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [312, 212.0]
-    rotation: 0
-    state: enabled
-- name: cfo_start_offset
-  id: parameter
-  parameters:
-    alias: ''
-    comment: ''
-    hide: none
-    label: CFO Start Offset [s]
-    short_id: ''
-    type: eng_float
-    value: '0'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1360, 188.0]
-    rotation: 0
-    state: enabled
-- name: cfo_threshold
-  id: parameter
-  parameters:
-    alias: ''
-    comment: ''
-    hide: none
-    label: CFO threshold
-    short_id: ''
-    type: eng_float
-    value: '0.5'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1360, 284.0]
-    rotation: 0
-    state: enabled
-- name: cfo_time_to_average
-  id: parameter
-  parameters:
-    alias: ''
-    comment: ''
-    hide: none
-    label: CFO Average Time [s]
-    short_id: ''
-    type: eng_float
-    value: '0.0005'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1360, 92.0]
+    coordinate: [824, 20.0]
     rotation: 0
     state: enabled
 - name: decimation
@@ -481,7 +586,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [552, 212.0]
+    coordinate: [880, 244.0]
     rotation: 0
     state: enabled
 - name: fft_size
@@ -498,7 +603,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [440, 212.0]
+    coordinate: [576, 132.0]
     rotation: 0
     state: enabled
 - name: fhss_utils_cf_estimate_0
@@ -512,12 +617,12 @@ blocks:
     method: fhss_utils.MIDDLE_OUT
     minoutbuf: '0'
     snr_min: cfe_snr
-    thresh_min: '-25.0'
+    thresh_min: -25.0 - cfe_snr
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [752, 976.0]
+    coordinate: [752, 1152.0]
     rotation: 0
     state: enabled
 - name: fhss_utils_fft_burst_tagger_0
@@ -544,7 +649,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [224, 972.0]
+    coordinate: [224, 1148.0]
     rotation: 0
     state: enabled
 - name: fhss_utils_sigmf_meta_writer_0
@@ -552,20 +657,22 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    comment: 'Optional: save SigMF annotations
+    comment: 'Optional: save SigMF
 
-      to view in a tool like inspectrum'
-    dtype: cf32_le
-    filename: /tmp/data.sigmf-meta
-    freq: int(center_freq)
+      annotations to view in
+
+      a tool like inspectrum'
+    dtype: '''ci16_le'' if short_in else ''cf32_le'''
+    filename: infile if outfile == '' else outfile
+    freq: center_freq
     label: sigmf_label
     rate: int(samp_rate)
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [752, 844.0]
-    rotation: 180
+    coordinate: [1560, 988.0]
+    rotation: 0
     state: enabled
 - name: fhss_utils_tagged_burst_to_pdu_0
   id: fhss_utils_tagged_burst_to_pdu
@@ -588,7 +695,41 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [472, 932.0]
+    coordinate: [464, 1108.0]
+    rotation: 0
+    state: enabled
+- name: freq_max
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: part
+    label: Maximum Frequency
+    short_id: Q
+    type: eng_float
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1224, 244.0]
+    rotation: 0
+    state: enabled
+- name: freq_min
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: part
+    label: Minimum Frequency
+    short_id: q
+    type: eng_float
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1064, 244.0]
     rotation: 0
     state: enabled
 - name: hist_time
@@ -597,7 +738,7 @@ blocks:
     alias: ''
     comment: ''
     hide: part
-    label: History Time [s]
+    label: Noise Estimate History (s)
     short_id: H
     type: eng_float
     value: '0.0005'
@@ -605,7 +746,24 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1144, 212.0]
+    coordinate: [832, 132.0]
+    rotation: 0
+    state: enabled
+- name: infile
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: none
+    label: Input SigMF Data File Name
+    short_id: i
+    type: str
+    value: /tmp/data.sigmf-data
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [240, 20.0]
     rotation: 0
     state: enabled
 - name: lookahead_time
@@ -622,7 +780,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1144, 92.0]
+    coordinate: [680, 132.0]
     rotation: 0
     state: enabled
 - name: max_burst_time
@@ -639,7 +797,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [832, 212.0]
+    coordinate: [1216, 20.0]
     rotation: 0
     state: enabled
 - name: min_burst_time
@@ -656,101 +814,89 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [832, 92.0]
+    coordinate: [1064, 20.0]
     rotation: 0
     state: enabled
 - name: note_0
   id: note
   parameters:
     alias: ''
-    comment: '.                                                                                                                                                                                                                                  Burst
-      Detection
+    comment: '---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-      ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
+      .                                                                                                                                                                                                                                  Burst
+      Detection'
     note: SECTION
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [24, 1132.0]
+    coordinate: [24, 836.0]
     rotation: 0
     state: enabled
 - name: note_0_0
   id: note
   parameters:
     alias: ''
-    comment: '.                                                                                                                                                                                                                                  Tuning
-      Parameters
+    comment: '.                                                                    |------------
+      INPUT/OUTPUT CONFIGURATION  -----------|                  |--------------------------
+      CORE DETECTOR CONFIGURATION -------------------------------|                      |-------------
+      BURST BOUNDARY CONFIGURATION ----------------|
 
-      ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
+
+      --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+      .                                                                                                                                                                                                                                  Input'
     note: SECTION
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [24, 324.0]
-    rotation: 0
-    state: enabled
-- name: note_0_0_0
-  id: note
-  parameters:
-    alias: ''
-    comment: '.                                                                                                                                                                                                                                  Input
-
-      ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
-    note: SECTION
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [24, 740.0]
-    rotation: 0
-    state: enabled
-- name: note_0_0_1
-  id: note
-  parameters:
-    alias: '-'
-    comment: .                                   |-----------------------------------------------------------------------------------
-      COMMON CONFIGURATION PARAMETERS  ---------------------------------------------------------------------------------------------------------|                      |------------
-      ADVANCED CONFIGURATION PARAMETERS  -------------|
-    note: ''
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [200, 20.0]
+    coordinate: [32, 308.0]
     rotation: 0
     state: enabled
 - name: note_0_1
   id: note
   parameters:
     alias: ''
-    comment: '.                                                                                                                                                                                                                                  FM
-      Demod and Symbol Recovery
+    comment: '---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-      ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
+      .                                                                                                                                                                                                                                  FM
+      Demod and Symbol Recovery'
     note: SECTION
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [24, 1532.0]
+    coordinate: [24, 1388.0]
     rotation: 0
     state: enabled
 - name: note_0_1_0
   id: note
   parameters:
     alias: ''
-    comment: ".                                                                  \
-      \                                                                          \
-      \                                                                          \
-      \            Align and Raster Select Bursts\t\t\t\t\n---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------"
+    comment: '---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------'
     note: SECTION
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [24, 1884.0]
+    coordinate: [24, 2172.0]
+    rotation: 0
+    state: enabled
+- name: note_0_1_0_0
+  id: note
+  parameters:
+    alias: ''
+    comment: '---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+      .                                                                                                                                                                                                                                  Align
+      and Raster Select Bursts'
+    note: SECTION
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [24, 1780.0]
     rotation: 0
     state: enabled
 - name: note_1
@@ -767,7 +913,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [32, 828.0]
+    coordinate: [32, 932.0]
     rotation: 0
     state: true
 - name: note_1_0
@@ -781,7 +927,22 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1136, 1068.0]
+    coordinate: [1312, 1308.0]
+    rotation: 0
+    state: true
+- name: note_1_1
+  id: note
+  parameters:
+    alias: ''
+    comment: 'This is not the best way for general use, but allows users
+
+      to specify the file format via command line parameters'
+    note: FILE INPUT
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [24, 716.0]
     rotation: 0
     state: true
 - name: note_2
@@ -791,12 +952,12 @@ blocks:
     comment: "Enable the CSV writer to save the data in the bursts to file. To open\
       \ the bits in\nURH, remove the comma separations and ensure the file extetnsion\
       \ is *.txt:\n            sed 's/,//g' burst_bits.csv > bits.txt"
-    note: ''
+    note: <=====
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1032, 1708.0]
+    coordinate: [1016, 1972.0]
     rotation: 0
     state: true
 - name: note_2_0
@@ -804,63 +965,29 @@ blocks:
   parameters:
     alias: ''
     comment: ''
-    note: ====> DEFRAMER
+    note: ====> TO DEFRAMER
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1016, 1644.0]
+    coordinate: [1016, 1892.0]
     rotation: 0
     state: enabled
-- name: output_attenuation
+- name: outfile
   id: parameter
   parameters:
     alias: ''
     comment: ''
-    hide: part
-    label: Output Attenuation
-    short_id: ''
-    type: eng_float
-    value: '40'
+    hide: none
+    label: Output SigMF Meta File Name
+    short_id: o
+    type: str
+    value: ''''''
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1536, 284.0]
-    rotation: 0
-    state: enabled
-- name: output_cutoff
-  id: parameter
-  parameters:
-    alias: ''
-    comment: ''
-    hide: part
-    label: Output Cutoff [cycles/samp]
-    short_id: ''
-    type: eng_float
-    value: '0.5'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1536, 92.0]
-    rotation: 0
-    state: enabled
-- name: output_trans_width
-  id: parameter
-  parameters:
-    alias: ''
-    comment: ''
-    hide: part
-    label: Output Trans. Width [cycles/samp]
-    short_id: ''
-    type: eng_float
-    value: '0.05'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1536, 188.0]
+    coordinate: [240, 132.0]
     rotation: 0
     state: enabled
 - name: pdu_utils_pack_unpack_0
@@ -877,7 +1004,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [824, 1636.0]
+    coordinate: [824, 1884.0]
     rotation: 0
     state: true
 - name: pdu_utils_pdu_align_0
@@ -895,7 +1022,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [376, 1692.0]
+    coordinate: [376, 1940.0]
     rotation: 0
     state: true
 - name: pdu_utils_pdu_clock_recovery_0
@@ -913,7 +1040,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [992, 1280.0]
+    coordinate: [1000, 1528.0]
     rotation: 0
     state: enabled
 - name: pdu_utils_pdu_clock_recovery_0_0
@@ -931,7 +1058,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [992, 1424.0]
+    coordinate: [1000, 1672.0]
     rotation: 0
     state: enabled
 - name: pdu_utils_pdu_fine_time_measure_0
@@ -950,7 +1077,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1296, 1004.0]
+    coordinate: [1312, 1212.0]
     rotation: 0
     state: disabled
 - name: pdu_utils_pdu_fir_filter_1
@@ -967,7 +1094,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1064, 964.0]
+    coordinate: [1072, 1164.0]
     rotation: 0
     state: enabled
 - name: pdu_utils_pdu_head_tail_0
@@ -985,7 +1112,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [824, 1820.0]
+    coordinate: [824, 2116.0]
     rotation: 0
     state: true
 - name: pdu_utils_pdu_quadrature_demod_cf_0
@@ -1001,7 +1128,49 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [544, 1372.0]
+    coordinate: [552, 1620.0]
+    rotation: 0
+    state: true
+- name: pdu_utils_pdu_range_filter_0
+  id: pdu_utils_pdu_range_filter
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: 'Will filter signals saved to SigMF
+
+      based on bandwidth (-b / -B)'
+    invert: 'False'
+    key: pmt.intern("bandwidth")
+    max: bw_max if bw_max else samp_rate
+    maxoutbuf: '0'
+    min: bw_min
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1048, 988.0]
+    rotation: 0
+    state: true
+- name: pdu_utils_pdu_range_filter_0_0
+  id: pdu_utils_pdu_range_filter
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: 'Will filter signals saved to SigMF
+
+      based on frequency (-q / -Q)'
+    invert: 'False'
+    key: pmt.intern("center_frequency")
+    max: freq_max if freq_max else (center_freq + samp_rate/2.0)
+    maxoutbuf: '0'
+    min: freq_min if freq_min else (center_freq - samp_rate/2.0)
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1320, 988.0]
     rotation: 0
     state: true
 - name: pdu_utils_pdu_split_0_0
@@ -1019,7 +1188,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1328, 1232.0]
+    coordinate: [1336, 1480.0]
     rotation: 0
     state: enabled
 - name: post_burst_time
@@ -1036,7 +1205,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [984, 212.0]
+    coordinate: [728, 244.0]
     rotation: 0
     state: enabled
 - name: pre_burst_time
@@ -1053,7 +1222,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [984, 92.0]
+    coordinate: [576, 244.0]
     rotation: 0
     state: enabled
 - name: pylambda_pdu_lambda_0
@@ -1071,7 +1240,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [288, 1476.0]
+    coordinate: [296, 1732.0]
     rotation: 0
     state: enabled
 - name: qtgui_time_raster_sink_x_0
@@ -1134,7 +1303,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1128, 1820.0]
+    coordinate: [1064, 2108.0]
     rotation: 0
     state: disabled
 - name: qtgui_time_sink_x_0_0_0_0_0
@@ -1231,7 +1400,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [560, 1268.0]
+    coordinate: [568, 1524.0]
     rotation: 180
     state: enabled
 - name: qtgui_time_sink_x_0_0_0_0_0_0
@@ -1328,7 +1497,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [200, 1084.0]
+    coordinate: [208, 1268.0]
     rotation: 180
     state: enabled
 - name: qtgui_time_sink_x_0_0_0_0_0_0_0_0
@@ -1425,7 +1594,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1328, 1356.0]
+    coordinate: [1336, 1604.0]
     rotation: 0
     state: enabled
 - name: qtgui_time_sink_x_0_0_0_0_0_1
@@ -1522,7 +1691,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [744, 1052.0]
+    coordinate: [752, 1228.0]
     rotation: 180
     state: enabled
 - name: qtgui_time_sink_x_0_0_0_0_0_2
@@ -1619,7 +1788,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [560, 1460.0]
+    coordinate: [568, 1716.0]
     rotation: 0
     state: enabled
 - name: qtgui_waterfall_sink_x_0
@@ -1680,7 +1849,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [320, 1248.0]
+    coordinate: [328, 1496.0]
     rotation: 0
     state: enabled
 - name: qtgui_waterfall_sink_x_0_0
@@ -1741,7 +1910,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1320, 600.0]
+    coordinate: [1320, 640.0]
     rotation: 0
     state: enabled
 - name: samp_rate
@@ -1758,7 +1927,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [552, 92.0]
+    coordinate: [360, 244.0]
     rotation: 0
     state: enabled
 - name: sandia_utils_csv_writer_0_0
@@ -1776,9 +1945,26 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [824, 1716.0]
+    coordinate: [840, 1972.0]
     rotation: 0
     state: disabled
+- name: short_in
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: none
+    label: SC16 Input
+    short_id: s
+    type: intx
+    value: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [408, 132.0]
+    rotation: 0
+    state: enabled
 - name: sigmf_label
   id: parameter
   parameters:
@@ -1793,16 +1979,45 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [312, 92.0]
+    coordinate: [240, 244.0]
     rotation: 0
     state: enabled
+- name: snippet_0
+  id: snippet
+  parameters:
+    alias: ''
+    code: "# this needs to somehow be run before initialization to work properly\n\
+      # but the intention is to dynamically load keuy params from sigmf-meta\n# -\
+      \ frequency\n# - sample rate\n# - sigmf captures/global fields\n\nimport json\n\
+      from os.path import splitext\n\nfilename=self.infile\nif filename.endswith('.sigmf-data'):\n\
+      \    try:\n        pre, ext = splitext(filename)\n        self.meta_filename\
+      \ = pre + '.sigmf-meta'\n        gr.log.notice(\"Looks like a sigmf-data file\
+      \ was specified, checking \" + self.meta_filename)\n        with open(self.meta_filename)\
+      \ as metafile:\n            sigmf_meta = json.load(metafile)\n            self.sigmf_captures\
+      \ = sigmf_meta['captures']\n            self.sigmf_global = sigmf_meta['global']\n\
+      \        if len(self.sigmf_captures) > 1:\n            print(len(self.sigmf_captures),\"\
+      found, using capture [0]\")\n        self.sigmf_captures = self.sigmf_captures[0]\n\
+      \        freq = self.sigmf_captures['core:frequency']\n        rate = int(round(self.sigmf_global['core:sample_rate'],0))\n\
+      \        print(\"got:\\n\\trate =\",rate,\"\\n\\tfreq =\",freq,\"\\n\")\n  \
+      \  except Exception as e:\n        print(\"attempt to load sigmf-meta file failed\
+      \ because \",e,\" - using preconfigured parameters\")"
+    comment: ''
+    priority: '0'
+    section: main_after_init
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [944, 420.0]
+    rotation: 0
+    state: disabled
 - name: threshold
   id: parameter
   parameters:
     alias: ''
     comment: ''
     hide: none
-    label: Threshold
+    label: Threshold (dB)
     short_id: t
     type: eng_float
     value: '8'
@@ -1810,7 +2025,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [440, 92.0]
+    coordinate: [576, 20.0]
     rotation: 0
     state: enabled
 - name: uhd_usrp_source_1
@@ -2246,7 +2461,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [824, 460.0]
+    coordinate: [792, 692.0]
     rotation: 0
     state: disabled
 - name: virtual_sink_0
@@ -2259,7 +2474,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1096, 580.0]
+    coordinate: [1080, 612.0]
     rotation: 0
     state: enabled
 - name: virtual_sink_0_0
@@ -2272,7 +2487,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1592, 972.0]
+    coordinate: [1600, 1172.0]
     rotation: 0
     state: enabled
 - name: virtual_sink_0_0_0
@@ -2285,7 +2500,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1328, 1484.0]
+    coordinate: [1336, 1732.0]
     rotation: 0
     state: enabled
 - name: virtual_source_0
@@ -2298,7 +2513,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [32, 1004.0]
+    coordinate: [32, 1180.0]
     rotation: 0
     state: enabled
 - name: virtual_source_0_0
@@ -2311,7 +2526,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1096, 532.0]
+    coordinate: [1080, 564.0]
     rotation: 0
     state: enabled
 - name: virtual_source_0_2
@@ -2324,7 +2539,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [48, 1388.0]
+    coordinate: [56, 1636.0]
     rotation: 0
     state: enabled
 - name: virtual_source_0_2_0
@@ -2337,7 +2552,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [72, 1740.0]
+    coordinate: [72, 1988.0]
     rotation: 0
     state: enabled
 
@@ -2345,18 +2560,19 @@ connections:
 - [analog_fastnoise_source_x_0, '0', blocks_add_xx_0, '1']
 - [blocks_add_xx_0, '0', blocks_multiply_const_vxx_0_1, '0']
 - [blocks_file_source_0_0, '0', blocks_interleaved_short_to_complex_0_1, '0']
-- [blocks_file_source_0_0_0, '0', blocks_skiphead_0, '0']
+- [blocks_file_source_0_0_0, '0', blocks_selector_0, '0']
 - [blocks_head_0, '0', blocks_throttle_0, '0']
 - [blocks_interleaved_short_to_complex_0_1, '0', blocks_multiply_const_vxx_0_1_0,
   '0']
 - [blocks_multiply_const_vxx_0_1, '0', virtual_sink_0, '0']
-- [blocks_multiply_const_vxx_0_1_0, '0', blocks_skiphead_0, '0']
+- [blocks_multiply_const_vxx_0_1_0, '0', blocks_selector_0, '1']
 - [blocks_probe_rate_0, rate, blocks_message_debug_0_1_0, print]
+- [blocks_selector_0, '0', blocks_skiphead_0, '0']
 - [blocks_skiphead_0, '0', blocks_head_0, '0']
 - [blocks_throttle_0, '0', blocks_add_xx_0, '0']
 - [fhss_utils_cf_estimate_0, debug, qtgui_time_sink_x_0_0_0_0_0_1, in]
-- [fhss_utils_cf_estimate_0, out, fhss_utils_sigmf_meta_writer_0, in]
 - [fhss_utils_cf_estimate_0, out, pdu_utils_pdu_fir_filter_1, pdu_in]
+- [fhss_utils_cf_estimate_0, out, pdu_utils_pdu_range_filter_0, pdu_in]
 - [fhss_utils_fft_burst_tagger_0, '0', fhss_utils_tagged_burst_to_pdu_0, '0']
 - [fhss_utils_fft_burst_tagger_0, debug, qtgui_time_sink_x_0_0_0_0_0_0, in]
 - [fhss_utils_tagged_burst_to_pdu_0, cpdus, fhss_utils_cf_estimate_0, in]
@@ -2373,6 +2589,8 @@ connections:
 - [pdu_utils_pdu_quadrature_demod_cf_0, fpdus, pdu_utils_pdu_clock_recovery_0, pdu_in]
 - [pdu_utils_pdu_quadrature_demod_cf_0, fpdus, pdu_utils_pdu_clock_recovery_0_0, pdu_in]
 - [pdu_utils_pdu_quadrature_demod_cf_0, fpdus, qtgui_time_sink_x_0_0_0_0_0, in]
+- [pdu_utils_pdu_range_filter_0, pdu_out, pdu_utils_pdu_range_filter_0_0, pdu_in]
+- [pdu_utils_pdu_range_filter_0_0, pdu_out, fhss_utils_sigmf_meta_writer_0, in]
 - [pdu_utils_pdu_split_0_0, dict, blocks_message_debug_0_1, print]
 - [pylambda_pdu_lambda_0, pdu, qtgui_time_sink_x_0_0_0_0_0_2, in]
 - [uhd_usrp_source_1, '0', virtual_sink_0, '0']
