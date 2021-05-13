@@ -83,12 +83,23 @@ void cf_estimate_impl::fft_setup(int power)
 
         // this gaussian window is narrow and produces a well defined spectral peak
         float sigma = fftsize * 1.0 / 32.0;
-        std::vector<float> window =
-            fft::window::build(fft::window::WIN_GAUSSIAN, fftsize, sigma, true);
-        //    fft::window::build(fft::window::WIN_BLACKMAN, fftsize, 0, true);
+        std::vector<float> win(fftsize, 0);
         for (int j = 0; j < fftsize; j++) {
-            d_windows[i][j] = window[j] / fftsize;
+            float x = (-fftsize + 1) / 2.0f + j;
+            win[j] = std::exp((-x * x) / (2 * sigma * sigma));
         }
+        // scale the window to compensate for FFT size and window rms gain:
+        double pwr_acc = 0.0;
+        for (auto x: win) pwr_acc += x*x/fftsize;
+        for (auto j=0; j < fftsize; j++) {
+            d_windows[i][j] = win[j] / (std::sqrt(pwr_acc) * fftsize);
+        }
+        // std::vector<float> window =
+        //     fft::window::build(fft::window::WIN_GAUSSIAN, fftsize, sigma, true);
+        // //    fft::window::build(fft::window::WIN_BLACKMAN, fftsize, 0, true);
+        // for (int j = 0; j < fftsize; j++) {
+        //     d_windows[i][j] = window[j] / fftsize;
+        // }
     }
 }
 
