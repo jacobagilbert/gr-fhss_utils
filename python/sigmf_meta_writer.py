@@ -49,10 +49,8 @@ class sigmf_meta_writer(gr.basic_block):
 
         self.label = label
 
-        self.d_dict = {}
-        self.d_dict['captures'] = [{'core:sample_start': 0, 'core:frequency': freq}]
-        self.d_dict['global'] = {'core:datatype': dtype, 'core:sample_rate': rate, 'antenna:gain': 0}
-        self.d_dict['annotations'] = []
+        self.initialize_sigmf_dict([{'core:sample_start': 0, 'core:frequency': freq}],
+                                   {'core:datatype': dtype, 'core:sample_rate': rate, 'antenna:gain': 0})
 
         self.message_port_register_in(pmt.intern("in"))
         self.set_msg_handler(pmt.intern("in"), self.handler)
@@ -68,6 +66,12 @@ class sigmf_meta_writer(gr.basic_block):
         f.close()
 
         return True
+
+    def initialize_sigmf_dict(self, sigmf_captures, sigmf_global, sigmf_annotations = []):
+        self.d_dict = {}
+        self.d_dict['captures'] = sigmf_captures
+        self.d_dict['global'] = sigmf_global
+        self.d_dict['annotations'] = sigmf_annotations
 
     def handler(self, pdu):
       if not pmt.is_pdu(pdu):
@@ -94,8 +98,9 @@ class sigmf_meta_writer(gr.basic_block):
           pdu_rate = pmt.to_double(pmt.dict_ref(meta, pmt.intern('sample_rate'), pmt.from_double(self.rate)))
           freq = pmt.to_double(pmt.dict_ref(meta, pmt.intern('center_frequency'), pmt.from_double(self.freq)))
           bw = pmt.to_double(pmt.dict_ref(meta, pmt.intern('bandwidth'), pmt.from_double(self.bw_min)))
+          
           if bw < self.bw_min:
-            bw = self.bw_min
+              bw = self.bw_min
 
           # these can be `None` so use to_python()
           snr = pmt.to_python(pmt.dict_ref(meta, pmt.intern('snr_db'), pmt.PMT_NIL))
@@ -116,8 +121,9 @@ class sigmf_meta_writer(gr.basic_block):
           eob = pmt.to_uint64(pmt.dict_ref(meta, pmt.intern('end_offset'), pmt.PMT_NIL))
           freq = pmt.to_double(pmt.dict_ref(meta, pmt.intern('center_frequency'), pmt.PMT_NIL))
           bw = pmt.to_double(pmt.dict_ref(meta, pmt.intern('bandwidth'), pmt.from_double(self.bw_min)))
+
           if bw < self.bw_min:
-            bw = self.bw_min
+              bw = self.bw_min
 
           # these can be `None` so use to_python()
           snr = pmt.to_python(pmt.dict_ref(meta, pmt.intern('snr_db'), pmt.PMT_NIL))

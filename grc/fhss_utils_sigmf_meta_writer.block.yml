@@ -2,17 +2,14 @@ id: fhss_utils_sigmf_meta_writer
 label: SigMF-meta Writer
 category: '[Sandia]/FHSS Utilities'
 
-templates:
-  imports: import fhss_utils
-  make: fhss_utils.sigmf_meta_writer(${filename}, ${freq}, ${rate}, ${label}, ${dtype})
-
 parameters:
+# "GENERAL" tab:
 -   id: filename
     label: Filename
     dtype: file_save
 -   id: freq
     label: Frequency (Hz)
-    dtype: int
+    dtype: float
 -   id: rate
     label: Samp Rate (Hz)
     dtype: int
@@ -33,5 +30,9 @@ parameters:
 inputs:
 -   domain: message
     id: in
+
+templates:
+    imports: import fhss_utils
+    make: fhss_utils.sigmf_meta_writer(${filename}, ${freq}, ${rate}, ${label}, ${dtype})
 
 file_format: 1
