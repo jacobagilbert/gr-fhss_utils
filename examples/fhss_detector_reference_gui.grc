@@ -9,7 +9,7 @@ options:
     description: FHSS Utilities Reference Application
     gen_cmake: 'On'
     gen_linking: dynamic
-    generate_options: no_gui
+    generate_options: qt_gui
     hier_block_src_path: '.:'
     id: fhss_detector_reference
     max_nouts: '0'
@@ -19,7 +19,7 @@ options:
     realtime_scheduling: ''
     run: 'True'
     run_command: '{python} -u {filename}'
-    run_options: run
+    run_options: prompt
     sizing_mode: fixed
     thread_safe_setters: ''
     title: Burst Detector Reference
@@ -221,7 +221,7 @@ blocks:
     bus_structure: null
     coordinate: [24, 164.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: analog_fastnoise_source_x_0
   id: analog_fastnoise_source_x
   parameters:
@@ -312,7 +312,7 @@ blocks:
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
-    num_items: nsamps if nsamps else int(1e10)
+    num_items: int(samp_rate/2)
     type: complex
     vlen: '1'
   states:
@@ -321,7 +321,7 @@ blocks:
     bus_structure: null
     coordinate: [648, 500.0]
     rotation: 0
-    state: enabled
+    state: bypassed
 - name: blocks_interleaved_short_to_complex_0_1
   id: blocks_interleaved_short_to_complex
   parameters:
@@ -486,7 +486,7 @@ blocks:
     bus_structure: null
     coordinate: [648, 572.0]
     rotation: 180
-    state: bypassed
+    state: enabled
 - name: burst_width
   id: parameter
   parameters:
@@ -973,23 +973,6 @@ blocks:
     coordinate: [1016, 1892.0]
     rotation: 0
     state: enabled
-- name: nsamps
-  id: parameter
-  parameters:
-    alias: ''
-    comment: ''
-    hide: part
-    label: Samples to Process
-    short_id: S
-    type: intx
-    value: '0'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [24, 172.0]
-    rotation: 0
-    state: enabled
 - name: outfile
   id: parameter
   parameters:
@@ -1131,7 +1114,7 @@ blocks:
     bus_structure: null
     coordinate: [824, 2116.0]
     rotation: 0
-    state: disabled
+    state: true
 - name: pdu_utils_pdu_quadrature_demod_cf_0
   id: pdu_utils_pdu_quadrature_demod_cf
   parameters:
@@ -1419,7 +1402,7 @@ blocks:
     bus_structure: null
     coordinate: [568, 1524.0]
     rotation: 180
-    state: disabled
+    state: enabled
 - name: qtgui_time_sink_x_0_0_0_0_0_0
   id: qtgui_time_sink_x
   parameters:
@@ -1516,7 +1499,7 @@ blocks:
     bus_structure: null
     coordinate: [208, 1268.0]
     rotation: 180
-    state: disabled
+    state: enabled
 - name: qtgui_time_sink_x_0_0_0_0_0_0_0_0
   id: qtgui_time_sink_x
   parameters:
@@ -1613,7 +1596,7 @@ blocks:
     bus_structure: null
     coordinate: [1336, 1604.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: qtgui_time_sink_x_0_0_0_0_0_1
   id: qtgui_time_sink_x
   parameters:
@@ -1710,7 +1693,7 @@ blocks:
     bus_structure: null
     coordinate: [752, 1228.0]
     rotation: 180
-    state: disabled
+    state: enabled
 - name: qtgui_time_sink_x_0_0_0_0_0_2
   id: qtgui_time_sink_x
   parameters:
@@ -1807,7 +1790,7 @@ blocks:
     bus_structure: null
     coordinate: [568, 1716.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: qtgui_waterfall_sink_x_0
   id: qtgui_waterfall_sink_x
   parameters:
@@ -1868,7 +1851,7 @@ blocks:
     bus_structure: null
     coordinate: [328, 1496.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: qtgui_waterfall_sink_x_0_0
   id: qtgui_waterfall_sink_x
   parameters:
@@ -1929,7 +1912,7 @@ blocks:
     bus_structure: null
     coordinate: [1320, 640.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: samp_rate
   id: parameter
   parameters:
