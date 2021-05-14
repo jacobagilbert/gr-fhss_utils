@@ -58,12 +58,11 @@ class sigmf_meta_writer(gr.basic_block):
     def stop(self):
         try:
             f = open(self.d_filename, 'w+')
-        except IOError:
-            print("ERROR: could not open {}".format(self.d_filename))
+            f.write(json.dumps(self.d_dict,indent=4))
+            f.close()
+        except IOError as e:
+            print("ERROR: could write to {}".format(self.d_filename), "because", e)
             quit()
-
-        f.write(json.dumps(self.d_dict,indent=4))
-        f.close()
 
         return True
 
