@@ -77,7 +77,8 @@ public:
      */
     moving_average(size_t size) : N(size)
     {
-        sum = current_index = 0.0;
+        current_index = 0;
+        sum = 0.0;
         pp = 0.0;
         hist.resize(N);
         memset(&hist[0], 0, sizeof(float) * N);
@@ -89,7 +90,7 @@ public:
      * @param p - value to add
      * @return float - current accumulator value
      */
-    float add(float p)
+    float add(double p)
     {
         sum += pp - hist[current_index];
         hist[current_index++] = pp;
@@ -114,11 +115,11 @@ public:
     }
 
 private:
-    std::vector<float> hist;
+    std::vector<double> hist;
     size_t current_index;
     size_t N;
-    float sum;
-    float pp;   // delay noise floor sum by one FFT
+    double sum;
+    double pp;   // delay noise floor sum by one FFT
 }; // end class moving_average
 
 /*
@@ -361,6 +362,7 @@ public:
     uint64_t get_n_tagged_bursts() override;
     void reset() override;
     void set_max_burst_bandwidth(double bw) override { d_filter_bandwidth = bw; }
+    void preload_noise_floor(double noise_density, bool preload) override;
 };
 
 } // namespace fhss_utils

@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(fft_burst_tagger.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(d963d92e73fbbc82e51c2a498d58457b)                     */
+/* BINDTOOL_HEADER_FILE_HASH(8eed9ade7ef40722a56ecf0fff2c0ee8)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -67,6 +67,13 @@ void bind_fft_burst_tagger(py::module& m)
              &fft_burst_tagger::set_max_burst_bandwidth,
              py::arg("bw"),
              D(fft_burst_tagger, set_max_burst_bandwidth))
+
+
+        .def("preload_noise_floor",
+             &fft_burst_tagger::preload_noise_floor,
+             py::arg("noise_density"),
+             py::arg("preload"),
+             D(fft_burst_tagger, preload_noise_floor))
 
         ;
 }

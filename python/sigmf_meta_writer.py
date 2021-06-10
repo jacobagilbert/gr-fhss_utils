@@ -25,6 +25,7 @@ import json
 import pmt
 from gnuradio import gr
 from os.path import splitext
+from math import isnan
 
 class sigmf_meta_writer(gr.basic_block):
     """
@@ -37,14 +38,15 @@ class sigmf_meta_writer(gr.basic_block):
             out_sig=None)
 
         self.d_filename = filename
-        if filename.endswith('.sigmf-data'):
+        if not filename.endswith('.sigmf-meta'):
             pre, ext = splitext(filename)
             self.d_filename = pre + '.sigmf-meta'
-            gr.log.warn("SigMF metadata filename ends with `sigmf-data`! Saving you from yourself and using " + self.d_filename)
+            gr.log.warn("SigMF metadata filename does not end with `sigmf-meta` - using " + self.d_filename)
+
 
         self.freq = freq
         self.rate = rate
-        self.soo = 256
+        self.soo = 0
         self.bw_min = rate/1000.0
 
         self.label = label
@@ -146,9 +148,15 @@ class sigmf_meta_writer(gr.basic_block):
 
       # append the annotation
       try:
-        self.d_dict['annotations'].append({'core:sample_start': sob-self.soo,
-                    'core:sample_count': eob-sob, 'core:freq_upper_edge': int(freq+bw/2),
-                    'core:freq_lower_edge': int(freq-bw/2), 'core:description': label,
-                    'capture_details:SNRdB': snr})
+        if isnan(snr):
+          print("Got illegal SNR value in",meta)
+          self.d_dict['annotations'].append({'core:sample_start': sob-self.soo,
+                      'core:sample_count': eob-sob, 'core:freq_upper_edge': int(freq+bw/2),
+                      'core:freq_lower_edge': int(freq-bw/2), 'core:description': label})
+        else:
+          self.d_dict['annotations'].append({'core:sample_start': sob-self.soo,
+                      'core:sample_count': eob-sob, 'core:freq_upper_edge': int(freq+bw/2),
+                      'core:freq_lower_edge': int(freq-bw/2), 'core:description': label,
+                      'capture_details:SNRdB': snr})
       except Exception as e:
         print('could not form annotation from message', pmt.car(pdu), ':', e)

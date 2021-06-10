@@ -32,3 +32,6 @@ static const char* __doc_gr_fhss_utils_fft_burst_tagger_reset = R"doc()doc";
 
 static const char* __doc_gr_fhss_utils_fft_burst_tagger_set_max_burst_bandwidth =
     R"doc()doc";
+
+
+static const char* __doc_gr_fhss_utils_fft_burst_tagger_preload_noise_floor = R"doc()doc";
