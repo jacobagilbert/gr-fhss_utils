@@ -222,12 +222,29 @@ blocks:
     coordinate: [24, 164.0]
     rotation: 0
     state: disabled
+- name: add_noise_lvl
+  id: parameter
+  parameters:
+    alias: ''
+    comment: ''
+    hide: none
+    label: Noise
+    short_id: ''
+    type: eng_float
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [280, 700.0]
+    rotation: 0
+    state: enabled
 - name: analog_fastnoise_source_x_0
   id: analog_fastnoise_source_x
   parameters:
     affinity: ''
     alias: ''
-    amp: '.000'
+    amp: add_noise_lvl
     comment: Optional noise impariment
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -239,7 +256,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [376, 692.0]
+    coordinate: [384, 700.0]
     rotation: 0
     state: true
 - name: blocks_add_xx_0
@@ -643,6 +660,7 @@ blocks:
     max_bursts: '0'
     maxoutbuf: '0'
     minoutbuf: 1024*1000*0
+    preload_nf: nf_preload
     sample_rate: samp_rate
     threshold: threshold
   states:
@@ -817,6 +835,25 @@ blocks:
     coordinate: [1064, 20.0]
     rotation: 0
     state: enabled
+- name: nf_preload
+  id: parameter
+  parameters:
+    alias: ''
+    comment: 'Advanced use only - if set to nonzero value it will initialize the
+
+      noise floor to this number to enable sample-0 burst detection'
+    hide: none
+    label: Noise Floor Preload
+    short_id: ''
+    type: eng_float
+    value: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [48, 1252.0]
+    rotation: 0
+    state: enabled
 - name: note_0
   id: note
   parameters:
@@ -934,9 +971,11 @@ blocks:
   id: note
   parameters:
     alias: ''
-    comment: 'This is not the best way for general use, but allows users
+    comment: 'This is not the best way for general use,
 
-      to specify the file format via command line parameters'
+      but allows users to specify the file
+
+      format via command line parameters'
     note: FILE INPUT
   states:
     bus_sink: false
