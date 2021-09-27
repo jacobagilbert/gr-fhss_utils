@@ -279,11 +279,11 @@ bool fft_burst_tagger_impl::stop()
 bool fft_burst_tagger_impl::compute_relative_magnitude(void)
 {
     // Only compute if we have sufficient data in our circular buffer
-    d_rel_mag_timer.start();
-    if (!d_history_primed) {
+    if (!d_history_primed || (d_abs_fft_index <= d_rel_mag_hist)) {
         return false;
     }
 
+    d_rel_mag_timer.start();
     volk_32f_x2_divide_32f(
         d_relative_magnitude_f, d_magnitude_shifted_f, d_baseline_sum_f, d_fft_size);
     d_rel_mag_timer.end();
@@ -913,13 +913,17 @@ void fft_burst_tagger_impl::tag_gone_bursts(int noutput_items)
 
 void fft_burst_tagger_impl::publish_debug()
 {
+    // do not publish a message if there are no blocks subscribed
+    if(!pmt::is_pair(pmt::dict_ref(d_message_subscribers, PMTCONSTSTR__debug(), pmt::PMT_NIL))) {
+        return;
+    }
+
     std::vector<gr_complex> dbg(d_fft_size);
     // generate output vector, real value is the current FFT, imaginary is the threshold
     // which allows this to be plotted on the time sink
     for (auto jj = 0; jj < d_fft_size; jj++) {
         dbg[jj] = 10 * log10(d_magnitude_shifted_f[jj]) +
                   1j * 10 * log10(1e-30 + 1.0 * d_baseline_sum_f[0 + jj]);
-//                  1j * 10 * log10(1e-30 + d_threshold * d_baseline_sum_f[0 + jj]);
     }
 
     message_port_pub(PMTCONSTSTR__debug(),
@@ -1059,8 +1063,11 @@ int fft_burst_tagger_impl::general_work(int noutput_items,
         update_circular_buffer();
         d_update_cb_timer.end();
 
-        // uncomment this to see every single FFT and corresponding noise average
-        // publish_debug(); usleep(5000);
+        /* uncomment this to see every single FFT and corresponding noise average; this
+         * will make online processing effectively unusable but can be very helpful to
+         * debug internal behavior when operating from file.
+         */
+        // if (d_debug) { publish_debug(); usleep(25000); }
 
         d_abs_fft_index++;
     }
@@ -1069,9 +1076,9 @@ int fft_burst_tagger_impl::general_work(int noutput_items,
     d_other.start();
     tag_new_bursts();
     tag_gone_bursts(produced);
-    if (d_debug) {
-        publish_debug();
-    }
+
+    publish_debug();
+
     d_other.end();
     d_total_timer.end();
 
