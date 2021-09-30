@@ -369,6 +369,8 @@ void tagged_burst_to_pdu_impl::publish_and_remove_old_bursts(const buffer& work_
             burst.len = std::min(burst.len, (size_t)d_max_burst_size);
             burst.dict =
                 pmt::dict_add(burst.dict, PMTCONSTSTR__end_offset(), pmt::from_uint64(tag.offset));
+            burst.dict = pmt::dict_add(
+                burst.dict, PMTCONSTSTR__input_rate(), pmt::from_float(d_sample_rate));
             if (burst.len >= d_min_burst_size) {
                 if (id == 1) {
                     GR_LOG_INFO(d_logger,
@@ -396,6 +398,8 @@ void tagged_burst_to_pdu_impl::publish_and_remove_old_bursts(const buffer& work_
                 (d_max_burst_size * d_decimation);
             burst.dict = pmt::dict_add(
                 burst.dict, PMTCONSTSTR__end_offset(), pmt::from_uint64(end_offset));
+            burst.dict = pmt::dict_add(
+                burst.dict, PMTCONSTSTR__input_rate(), pmt::from_float(d_sample_rate));
             burst.dict = pmt::dict_add(burst.dict, PMTCONSTSTR__cut_short(), pmt::PMT_T);
             if (d_debug) {
                 GR_LOG_INFO(d_logger,

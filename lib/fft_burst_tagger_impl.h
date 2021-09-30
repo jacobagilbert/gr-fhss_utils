@@ -242,6 +242,7 @@ class fft_burst_tagger_impl : public fft_burst_tagger
 private:
     bool d_history_primed;
     bool d_debug;
+    bool d_pub_debug;
 
     int d_fft_size;
     int d_fine_fft_size;
@@ -352,6 +353,7 @@ public:
                           bool debug);
 
     ~fft_burst_tagger_impl() override;
+    bool start() override;
     bool stop() override;
 
     int general_work(int noutput_items,

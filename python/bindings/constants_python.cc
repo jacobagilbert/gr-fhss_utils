@@ -14,7 +14,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0)                                                       */
 /* BINDTOOL_USE_PYGCCXML(0)                                                        */
 /* BINDTOOL_HEADER_FILE(constants.h)                                               */
-/* BINDTOOL_HEADER_FILE_HASH(178a40d37fb19394edaf53d1514373d0)                     */
+/* BINDTOOL_HEADER_FILE_HASH(77c07cd88c705f82f10811d4a2fc07a8)                     */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -130,6 +130,11 @@ void bind_constants(py::module& m)
     m.def("PMTCONSTSTR__end_offset",
           &::gr::fhss_utils::PMTCONSTSTR__end_offset,
           D(PMTCONSTSTR__end_offset));
+
+
+    m.def("PMTCONSTSTR__input_rate",
+          &::gr::fhss_utils::PMTCONSTSTR__input_rate,
+          D(PMTCONSTSTR__input_rate));
 
 
     m.def("PMTCONSTSTR__cut_short",

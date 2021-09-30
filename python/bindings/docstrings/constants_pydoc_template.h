@@ -78,4 +78,7 @@ static const char* __doc_gr_fhss_utils_PMTCONSTSTR__start_offset = R"doc()doc";
 static const char* __doc_gr_fhss_utils_PMTCONSTSTR__end_offset = R"doc()doc";
 
 
+static const char* __doc_gr_fhss_utils_PMTCONSTSTR__input_rate = R"doc()doc";
+
+
 static const char* __doc_gr_fhss_utils_PMTCONSTSTR__cut_short = R"doc()doc";

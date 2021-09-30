@@ -92,6 +92,7 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_freq,
       d_history_index(0),
       d_burst_post_len(burst_post_len),
       d_debug(debug),
+      d_pub_debug(false),
       d_burst_debug_file(NULL),
       d_mask_owners(d_fft_size)
 
@@ -245,6 +246,21 @@ fft_burst_tagger_impl::~fft_burst_tagger_impl()
     MKL_LONG status = DftiFreeDescriptor(&m_fft);
     status = DftiFreeDescriptor(&m_fine_fft);
 #endif
+}
+
+bool fft_burst_tagger_impl::start()
+{
+    GR_LOG_INFO(d_logger, boost::format("total time: %f") % d_total_timer.elapsed());
+
+    // check if there are any blocks subscribed to the `debug` port - if not, disable output
+    if(pmt::is_pair(pmt::dict_ref(d_message_subscribers, PMTCONSTSTR__debug(), pmt::PMT_NIL))) {
+        GR_LOG_INFO(d_logger, "Debug Message Port is connected - Enabling Output");
+        d_pub_debug = true;
+    } else {
+        GR_LOG_INFO(d_logger, "Debug Message Port is not connected - Disabling Output");
+        d_pub_debug = false;
+    }
+    return true;
 }
 
 bool fft_burst_tagger_impl::stop()
@@ -913,8 +929,7 @@ void fft_burst_tagger_impl::tag_gone_bursts(int noutput_items)
 
 void fft_burst_tagger_impl::publish_debug()
 {
-    // do not publish a message if there are no blocks subscribed
-    if(!pmt::is_pair(pmt::dict_ref(d_message_subscribers, PMTCONSTSTR__debug(), pmt::PMT_NIL))) {
+    if(!d_pub_debug) {
         return;
     }
 
