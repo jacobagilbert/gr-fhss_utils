@@ -152,11 +152,11 @@ class sigmf_meta_writer(gr.basic_block):
           print("Got illegal SNR value in",meta)
           self.d_dict['annotations'].append({'core:sample_start': sob-self.soo,
                       'core:sample_count': eob-sob, 'core:freq_upper_edge': int(freq+bw/2),
-                      'core:freq_lower_edge': int(freq-bw/2), 'core:description': label})
+                      'core:freq_lower_edge': int(freq-bw/2), 'core:label': label})
         else:
           self.d_dict['annotations'].append({'core:sample_start': sob-self.soo,
                       'core:sample_count': eob-sob, 'core:freq_upper_edge': int(freq+bw/2),
-                      'core:freq_lower_edge': int(freq-bw/2), 'core:description': label,
+                      'core:freq_lower_edge': int(freq-bw/2), 'core:label': label,
                       'capture_details:SNRdB': snr})
       except Exception as e:
         print('could not form annotation from message', pmt.car(pdu), ':', e)
