@@ -18,6 +18,8 @@
 #include <gnuradio/fhss_utils/constants.h>
 #include <gnuradio/io_signature.h>
 #include <boost/format.hpp>
+#include <fmt/format.h>
+#include "pmt_formatters.h"
 namespace gr {
 namespace fhss_utils {
 
@@ -159,8 +161,7 @@ void cf_estimate_impl::pdu_handler(pmt::pmt_t pdu)
 
     if (burst_size < MIN_BURST_SIZE) {
         GR_LOG_INFO(d_logger,
-                    boost::format("Burst of length %d too small (min = %d), dropping.") %
-                        burst_size % MIN_BURST_SIZE);
+                    fmt::format("Burst of length {} too small (min = {}), dropping.", burst_size, MIN_BURST_SIZE));
     }
 
     //////////////////////////////////

@@ -44,12 +44,18 @@ if(APPLE)
     )
 endif(APPLE)
 
-# This is to allow building on Apple Silicon, though removing AVX is not
-# necessary on Intel Macs... Just a quick patch for now
+# Handle architecture-specific compiler flags
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+
+# Only add AVX flag on x86/x86_64 architectures
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|i386|i686|AMD64")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx")
+endif()
+
+# Add numeric literals flag (needed for GCC)
 if(NOT APPLE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -fext-numeric-literals")
-endif(APPLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fext-numeric-literals")
+endif()
 
 ########################################################################
 # Install built library files
