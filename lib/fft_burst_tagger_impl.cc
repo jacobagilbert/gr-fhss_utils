@@ -16,7 +16,6 @@
 #include <gnuradio/fft/window.h>
 #include <gnuradio/fhss_utils/constants.h>
 #include <gnuradio/io_signature.h>
-#include <fmt/format.h>
 #include <boost/format.hpp>
 #include "fft_burst_tagger_impl.h"
 
@@ -184,9 +183,8 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_freq,
     d_threshold = pow(10, threshold / 10);
 
     if (d_debug) {
-        GR_LOG_INFO(d_logger,
-                    fmt::format("threshold={}, d_threshold={} ({}/{})",
-                                threshold, d_threshold, d_threshold * d_history_size, d_fft_size));
+        d_logger->info("threshold={}, d_threshold={} ({}/{})",
+                        threshold, d_threshold, d_threshold * d_history_size, d_fft_size);
     }
 
     d_peaks.resize(d_fft_size);
@@ -208,12 +206,12 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_freq,
     // Area to ignore around an already found signal in FFT bins, rounded up to multiple
     // of two, which also helps compensate for the window width
     d_burst_width = 2 * std::ceil(1.0 * burst_width / (2.0 * sample_rate / fft_size));
-    GR_LOG_INFO(d_logger, fmt::format("bursts width is +/- {} FFT bins", d_burst_width / 2));
+    d_logger->info("bursts width is +/- {} FFT bins", d_burst_width / 2);
 
     d_filter_bandwidth = 0;
 
     if (d_debug) {
-        GR_LOG_INFO(d_logger, fmt::format("d_max_bursts={}", d_max_bursts));
+        d_logger->info("d_max_bursts={}", d_max_bursts);
     }
 
     if (d_debug) {
@@ -228,7 +226,7 @@ fft_burst_tagger_impl::fft_burst_tagger_impl(float center_freq,
  */
 fft_burst_tagger_impl::~fft_burst_tagger_impl()
 {
-    GR_LOG_INFO(d_logger, fmt::format("Tagged {} bursts", d_n_tagged_bursts));
+    d_logger->info("Tagged {} bursts", d_n_tagged_bursts);
     delete d_fft;
     delete d_fine_fft;
     volk_free(d_window_f);
@@ -251,14 +249,14 @@ fft_burst_tagger_impl::~fft_burst_tagger_impl()
 
 bool fft_burst_tagger_impl::start()
 {
-    GR_LOG_INFO(d_logger, fmt::format("total time: {}", d_total_timer.elapsed()));
+    d_logger->info("total time: {}", d_total_timer.elapsed());
 
     // check if there are any blocks subscribed to the `debug` port - if not, disable output
     if(pmt::is_pair(pmt::dict_ref(d_message_subscribers, PMTCONSTSTR__debug(), pmt::PMT_NIL))) {
-        GR_LOG_INFO(d_logger, "Debug Message Port is connected - Enabling Output");
+        d_logger->info("Debug Message Port is connected - Enabling Output");
         d_pub_debug = true;
     } else {
-        GR_LOG_INFO(d_logger, "Debug Message Port is not connected - Disabling Output");
+        d_logger->info("Debug Message Port is not connected - Disabling Output");
         d_pub_debug = false;
     }
     return true;
@@ -267,22 +265,22 @@ bool fft_burst_tagger_impl::start()
 bool fft_burst_tagger_impl::stop()
 {
 #ifdef DO_TIMER
-    GR_LOG_INFO(d_logger, fmt::format("total time: {}", d_total_timer.elapsed()));
-    GR_LOG_INFO(d_logger, fmt::format("rel mag: {}", d_rel_mag_timer.elapsed()));
-    GR_LOG_INFO(d_logger, fmt::format("fft time: {}", d_fft_timer.elapsed()));
-    GR_LOG_INFO(d_logger, fmt::format("update pb time: {}", d_update_pb_timer.elapsed()));
-    GR_LOG_INFO(d_logger, fmt::format("update ab time: {}", d_update_ab_timer.elapsed()));
-    GR_LOG_INFO(d_logger, fmt::format("remove tb time: {}", d_remove_tb_timer.elapsed()));
-    GR_LOG_INFO(d_logger, fmt::format("extract time: {}", d_extract_timer.elapsed()));
-    GR_LOG_INFO(d_logger, fmt::format("delete time: {}", d_delete_timer.elapsed()));
-    GR_LOG_INFO(d_logger, fmt::format("new pb time: {}", d_new_pb_timer.elapsed()));
-    GR_LOG_INFO(d_logger, fmt::format("new burst time: {}", d_new_b_timer.elapsed()));
-    GR_LOG_INFO(d_logger, fmt::format("update cb: {}", d_update_cb_timer.elapsed()));
-    GR_LOG_INFO(d_logger, fmt::format("other timer: {}", d_other.elapsed()));
+    d_logger->info("total time: {}", d_total_timer.elapsed());
+    d_logger->info("rel mag: {}", d_rel_mag_timer.elapsed());
+    d_logger->info("fft time: {}", d_fft_timer.elapsed());
+    d_logger->info("update pb time: {}", d_update_pb_timer.elapsed());
+    d_logger->info("update ab time: {}", d_update_ab_timer.elapsed());
+    d_logger->info("remove tb time: {}", d_remove_tb_timer.elapsed());
+    d_logger->info("extract time: {}", d_extract_timer.elapsed());
+    d_logger->info("delete time: {}", d_delete_timer.elapsed());
+    d_logger->info("new pb time: {}", d_new_pb_timer.elapsed());
+    d_logger->info("new burst time: {}", d_new_b_timer.elapsed());
+    d_logger->info("update cb: {}", d_update_cb_timer.elapsed());
+    d_logger->info("other timer: {}", d_other.elapsed());
 #endif
 
-    GR_LOG_INFO(d_logger, fmt::format("saw {} ffts", d_abs_fft_index));
-    GR_LOG_INFO(d_logger, fmt::format("extra = {}", extra));
+    d_logger->info("saw {} ffts", d_abs_fft_index);
+    d_logger->info("extra = {}", extra);
 
     return true;
 }
@@ -354,7 +352,7 @@ void fft_burst_tagger_impl::reset()
 
 void fft_burst_tagger_impl::_reset()
 {
-    GR_LOG_WARN(d_logger, "=========== RESETTING BURST DETECTOR ===========");
+    d_logger->warn("=========== RESETTING BURST DETECTOR ===========");
     // close and tag all current bursts
     // d_peaks.clear();
     d_current_peaks = 0;
@@ -484,12 +482,10 @@ void fft_burst_tagger_impl::add_ownership(const pre_burst& b)
         d_burst_mask_i[i] = 0;
         d_burst_mask_j[i] = 0;
         if (d_mask_owners[i].push_back(b.id)) {
-            GR_LOG_WARN(d_logger,
-                        fmt::format("Owners::push_back - Trying to add too many points for  bin id={}, size={}, burst={}",
-                            d_mask_owners[i].uid, d_mask_owners[i]._size, b.id));
-            GR_LOG_WARN(d_logger,
-                        fmt::format("Owner bins are {}, {}, {} {}",
-                            d_mask_owners[i].ids[0], d_mask_owners[i].ids[1], d_mask_owners[i].ids[2], d_mask_owners[i].ids[3]));
+            d_logger->warn("Owners::push_back - Trying to add too many points for  bin id={}, size={}, burst={}",
+                            d_mask_owners[i].uid, d_mask_owners[i]._size, b.id);
+            d_logger->warn("Owner bins are {}, {}, {} {}",
+                            d_mask_owners[i].ids[0], d_mask_owners[i].ids[1], d_mask_owners[i].ids[2], d_mask_owners[i].ids[3]);
         }
     }
 }
@@ -503,29 +499,24 @@ void fft_burst_tagger_impl::update_ownership(const pre_burst& pb, const burst& b
                 d_burst_mask_i[i] = ~0;
             }
             if (d_mask_owners[i].erase(pb.id)) {
-                GR_LOG_ERROR(
-                    d_logger,
-                    fmt::format("Owners::Remove - Couldn't find id to erase. This should never happen - bin id = {}, burst={}",
-                        d_mask_owners[i].uid, pb.id));
+                d_logger->error("Owners::Remove - Couldn't find id to erase. This should never happen - bin id = {}, burst={}",
+                        d_mask_owners[i].uid, pb.id);
             }
         }
         for (int i = b.start_bin; i <= b.stop_bin; i++) {
             d_burst_mask_i[i] = 0;
             d_burst_mask_j[i] = 0;
             if (d_mask_owners[i].push_back(b.id)) {
-                GR_LOG_WARN(d_logger,
-                            fmt::format("Owners::push_back - Trying to add too many points for  bin id={}, size={}, burst={}",
-                                d_mask_owners[i].uid, d_mask_owners[i]._size, b.id));
-                GR_LOG_WARN(d_logger,
-                            fmt::format("Owner bins are {}, {}, {} {}",
-                                d_mask_owners[i].ids[0], d_mask_owners[i].ids[1], d_mask_owners[i].ids[2], d_mask_owners[i].ids[3]));
+                d_logger->warn("Owners::push_back - Trying to add too many points for  bin id={}, size={}, burst={}",
+                                d_mask_owners[i].uid, d_mask_owners[i]._size, b.id);
+                d_logger->warn("Owner bins are {}, {}, {} {}",
+                                d_mask_owners[i].ids[0], d_mask_owners[i].ids[1], d_mask_owners[i].ids[2], d_mask_owners[i].ids[3]);
             }
         }
     } else {
         for (int i = b.start_bin; i <= b.stop_bin; i++) {
             if (d_mask_owners[i].update(pb.id, b.id)) {
-                GR_LOG_ERROR(d_logger,
-                             "Owners::Update - Couldn't find id to update. This should never happen");
+                d_logger->error("Owners::Update - Couldn't find id to update. This should never happen");
             }
         }
     }
@@ -538,9 +529,8 @@ void fft_burst_tagger_impl::remove_ownership(const pre_burst& b)
             d_burst_mask_i[i] = ~0;
         }
         if (d_mask_owners[i].erase(b.id)) {
-            GR_LOG_ERROR(d_logger,
-                         fmt::format("Owners::Remove - Couldn't find id to erase. This should never happen - bin id = {}, burst={}",
-                             d_mask_owners[i].uid, b.id));
+            d_logger->error("Owners::Remove - Couldn't find id to erase. This should never happen - bin id = {}, burst={}",
+                             d_mask_owners[i].uid, b.id);
         }
     }
 }
@@ -552,9 +542,8 @@ void fft_burst_tagger_impl::remove_ownership(const burst& b)
             d_burst_mask_i[i] = ~0;
         }
         if (d_mask_owners[i].erase(b.id)) {
-            GR_LOG_ERROR(d_logger,
-                         fmt::format("Owners::Remove - Couldn't find id to erase. This should never happen - bin id = {}, burst={}",
-                             d_mask_owners[i].uid, b.id));
+            d_logger->error("Owners::Remove - Couldn't find id to erase. This should never happen - bin id = {}, burst={}",
+                             d_mask_owners[i].uid, b.id);
         }
     }
 }
@@ -944,7 +933,7 @@ void fft_burst_tagger_impl::preload_noise_floor(double noise_density, bool prelo
 {
     // the preload boolean allows this function to be called but also bypassed (GRC thing...)
     if (preload) {
-        GR_LOG_INFO(d_logger, fmt::format("initializing noise denisty to {:.2f} dB", noise_density));
+        d_logger->info("initializing noise denisty to {:.2f} dB", noise_density);
         double noise_density_linear = pow(10, noise_density / 10.0);
         for (auto i = 0; i < d_fft_size; i++) {
             for (auto j = 0; j < d_history_size; j++) {
@@ -953,7 +942,7 @@ void fft_burst_tagger_impl::preload_noise_floor(double noise_density, bool prelo
         }
         d_history_primed = true;
     } else {
-        GR_LOG_INFO(d_logger, "preload called but bypassed, running normally");
+        d_logger->info("preload called but bypassed, running normally");
     }
 }
 
